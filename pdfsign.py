@@ -15,6 +15,8 @@ from PyPDF2 import PdfReader, PdfWriter
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 
+import filestore
+
 MIN_REL_W = 0.03
 MAX_REL_W = 0.9
 
@@ -37,7 +39,7 @@ def displayed_size(page):
 
 
 def page_count(pdf_path):
-    return len(PdfReader(pdf_path).pages)
+    return len(PdfReader(filestore.ensure(pdf_path)).pages)
 
 
 def _apply_display_transform(c, page):
@@ -62,7 +64,8 @@ def normalize_placement(pdf_path, image_path, page_index, rel_x, rel_y, rel_w):
     ratio so the signature always keeps its proportions.
     Returns dict(page_index, rel_x, rel_y, rel_w, rel_h).
     """
-    reader = PdfReader(pdf_path)
+    reader = PdfReader(filestore.ensure(pdf_path))
+    filestore.ensure(image_path)
     n = len(reader.pages)
     page_index = int(page_index)
     if page_index != -1 and not (0 <= page_index < n):
@@ -93,8 +96,10 @@ def render_pdf(base_pdf_path, placements, out_path, tracking_number=None):
     If `tracking_number` is given, it is stamped small at the bottom-left of
     every page.
     """
-    reader = PdfReader(base_pdf_path)
+    reader = PdfReader(filestore.ensure(base_pdf_path))
     placements = list(placements)
+    for p in placements:
+        filestore.ensure(p["image_path"])
     writer = PdfWriter()
 
     for i, page in enumerate(reader.pages):
@@ -133,6 +138,7 @@ def render_pdf(base_pdf_path, placements, out_path, tracking_number=None):
     with open(tmp, "wb") as f:
         writer.write(f)
     os.replace(tmp, out_path)
+    filestore.save(out_path)
     return out_path
 
 
@@ -180,4 +186,5 @@ def prepare_signature_image(src, dest_path, remove_background=True, threshold=23
 
     os.makedirs(os.path.dirname(os.path.abspath(dest_path)), exist_ok=True)
     img.save(dest_path, "PNG")
+    filestore.save(dest_path)
     return dest_path

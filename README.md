@@ -65,3 +65,13 @@ python -m pytest tests
 
 `tests/test_workflow.py` runs the whole flow through the real routes: setup, submission, sequential access,
 endorse/sign, return, resubmit, final signature, tracking numbers, and access control.
+
+## Deploying on Vercel
+
+Vercel runs the app from `app.py` automatically. Vercel servers have no permanent disk, so connect a
+**Neon Postgres** database (Vercel project → Storage → Create Database → Neon → Connect). Vercel then sets
+`DATABASE_URL`, and the app stores all data **and uploaded files** in Postgres, so every server instance
+shares the same accounts and letters. Without `DATABASE_URL` the app falls back to a temporary SQLite file
+in `/tmp` (demo only: data resets). On Vercel the demo accounts (`seed_demo.py`) are created automatically.
+Also set `DSA_SECRET_KEY`. Vercel limits a request to about 4.5 MB, so larger PDFs can't be uploaded there.
+Locally nothing changes: SQLite (`dsa.sqlite3`) and the `uploads/` folder are used.

@@ -10,6 +10,7 @@ Rows are returned as `Row` objects (a dict that also allows attribute access),
 so Jinja templates can keep using `doc.title`, `user.email`, etc.
 """
 import os
+import re
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime
@@ -19,6 +20,11 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ON_VERCEL = bool(os.environ.get("VERCEL"))
 DB_PATH = os.environ.get("DSA_DB_PATH",
                          "/tmp/dsa.sqlite3" if ON_VERCEL else os.path.join(BASE_DIR, "dsa.sqlite3"))
+
+# Hosted Postgres (e.g. Neon connected through Vercel). When set, it replaces the SQLite file
+# so every server instance shares the same data. Locally nothing is set and SQLite is used.
+DATABASE_URL = os.environ.get("DATABASE_URL") or os.environ.get("POSTGRES_URL") or ""
+IS_PG = DATABASE_URL.startswith(("postgres://", "postgresql://"))
 
 
 class Row(dict):
@@ -42,7 +48,82 @@ def now_str():
 _local_conn = {}
 
 
+# ───────────── Postgres adapter (same calls as sqlite3, SQLite-style SQL translated) ─────────────
+
+_NO_ID_TABLES = {"site_content", "counters", "files"}
+_RE_EQ_NOCASE = re.compile(r"([\w.]+)\s*=\s*\?\s+COLLATE\s+NOCASE", re.I)
+_RE_NOCASE = re.compile(r"([\w.]+)\s+COLLATE\s+NOCASE", re.I)
+_RE_INSERT = re.compile(r"^\s*INSERT\s+(OR\s+IGNORE\s+)?INTO\s+(\w+)", re.I)
+
+
+def pg_sql(sql, has_params=True):
+    """Translate the SQLite dialect used in this app into Postgres."""
+    s = re.sub(r"\bBEGIN\s+IMMEDIATE\b", "BEGIN", sql, flags=re.I)
+    s = _RE_EQ_NOCASE.sub(r"LOWER(\1) = LOWER(?)", s)
+    s = _RE_NOCASE.sub(r"LOWER(\1)", s)
+    s = re.sub(r"\bLIKE\b", "ILIKE", s)            # SQLite LIKE is case-insensitive
+    m = _RE_INSERT.match(s)
+    if m and m.group(1):
+        s = s[:m.start(1)] + s[m.end(1):] + " ON CONFLICT DO NOTHING"
+    if has_params:
+        s = s.replace("%", "%%").replace("?", "%s")
+    return s
+
+
+class _PGCursor:
+    def __init__(self, rows, lastrowid=None):
+        self._rows, self.lastrowid = rows, lastrowid
+
+    def fetchall(self):
+        return self._rows
+
+    def fetchone(self):
+        return self._rows[0] if self._rows else None
+
+
+class PGConnection:
+    """Wraps a psycopg connection so the rest of the app can keep its sqlite3-style calls."""
+
+    def __init__(self, url):
+        import psycopg
+        self._psycopg = psycopg
+        # prepare_threshold=None: no server-side prepared statements (safe behind a pooler)
+        self.conn = psycopg.connect(url, autocommit=True, prepare_threshold=None)
+
+    @property
+    def in_transaction(self):
+        from psycopg.pq import TransactionStatus
+        return self.conn.info.transaction_status != TransactionStatus.IDLE
+
+    def execute(self, sql, params=()):
+        params = tuple(params or ())
+        s = pg_sql(sql, bool(params))
+        m = _RE_INSERT.match(s)
+        want_id = bool(m) and m.group(2).lower() not in _NO_ID_TABLES and "RETURNING" not in s.upper()
+        if want_id:
+            s += " RETURNING id"
+        with self.conn.cursor() as cur:
+            cur.execute(s, params or None)
+            rows = []
+            if cur.description:
+                names = [d.name for d in cur.description]
+                rows = [Row(zip(names, r)) for r in cur.fetchall()]
+        lastrowid = rows[0]["id"] if want_id and rows else None
+        return _PGCursor(rows, lastrowid)
+
+    def executescript(self, script):
+        script = "\n".join(l for l in script.splitlines() if not l.strip().startswith("--"))
+        for stmt in script.split(";"):
+            if stmt.strip():
+                self.execute(stmt, ())
+
+    def close(self):
+        self.conn.close()
+
+
 def connect(path=None):
+    if IS_PG and not path:
+        return PGConnection(DATABASE_URL)
     path = path or DB_PATH
     conn = sqlite3.connect(path, timeout=30, isolation_level=None, check_same_thread=False)
     conn.row_factory = _row_factory
@@ -107,6 +188,19 @@ def transaction():
         raise
     else:
         conn.execute("COMMIT")
+
+
+@contextmanager
+def setup_lock():
+    """Serialize first-run setup when several server instances start at once (Postgres only)."""
+    if not IS_PG:
+        yield
+        return
+    # One transaction with a transaction-level lock: works through Neon's connection pooler,
+    # and the lock is released automatically on COMMIT/ROLLBACK. Nested transaction() calls join it.
+    with transaction() as conn:
+        conn.execute("SELECT pg_advisory_xact_lock(7310431)")
+        yield
 
 
 def query(sql, params=(), one=False):
@@ -352,9 +446,28 @@ AVAILABILITY_CHOICES = [
 ]
 
 
+def _pg_schema():
+    s = SCHEMA.replace("INTEGER PRIMARY KEY AUTOINCREMENT", "SERIAL PRIMARY KEY")
+    s = s.replace(" COLLATE NOCASE", "").replace(" REAL ", " DOUBLE PRECISION ")
+    return s + """
+CREATE TABLE IF NOT EXISTS files (
+    name       TEXT PRIMARY KEY,
+    data       BYTEA NOT NULL,
+    updated_at TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS ux_users_email_ci ON users (LOWER(email));
+CREATE UNIQUE INDEX IF NOT EXISTS ux_orgs_name_ci ON organizations (LOWER(name));
+CREATE UNIQUE INDEX IF NOT EXISTS ux_offices_name_ci ON offices (LOWER(name));
+"""
+
+
 def _migrate(conn):
     """Add columns introduced after the first release (safe to run repeatedly)."""
-    cols = {r["name"] for r in conn.execute("PRAGMA table_info(users)").fetchall()}
+    if IS_PG:
+        cols = {r["name"] for r in conn.execute(
+            "SELECT column_name AS name FROM information_schema.columns WHERE table_name = 'users'").fetchall()}
+    else:
+        cols = {r["name"] for r in conn.execute("PRAGMA table_info(users)").fetchall()}
     for name, ddl in (
         ("availability", "TEXT NOT NULL DEFAULT 'available'"),
         ("availability_note", "TEXT NOT NULL DEFAULT ''"),
@@ -396,7 +509,7 @@ def _apply_official_hierarchy():
 
 def init_db(seed_moderator=True):
     conn = get_db()
-    conn.executescript(SCHEMA)
+    conn.executescript(_pg_schema() if IS_PG else SCHEMA)
     _migrate(conn)
     _apply_official_hierarchy()
     with transaction():

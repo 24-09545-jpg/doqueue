@@ -16,6 +16,7 @@ import shutil
 import uuid
 from datetime import date, datetime
 
+import filestore
 import pdfsign
 from db import AVAILABILITY_CHOICES, execute, now_str, query, transaction
 from models import (
@@ -103,14 +104,14 @@ def _store_pdf(file_storage, prefix):
     except Exception:
         _safe_remove(path)
         raise WorkflowError("The uploaded file is not a valid PDF.")
+    filestore.save(path)
     return path
 
 
 def _safe_remove(path):
     try:
-        if path and os.path.exists(path):
-            os.remove(path)
-    except OSError:
+        filestore.remove(path)
+    except Exception:
         pass
 
 
@@ -423,7 +424,7 @@ def endorse_letter(user, letter_id, remarks):
 
 
 def approve_and_sign(user, letter_id, page_index, rel_x, rel_y, rel_w, remarks=""):
-    if not user.get("signature_path") or not os.path.exists(user["signature_path"]):
+    if not user.get("signature_path") or not filestore.exists(user["signature_path"]):
         raise WorkflowError("You must upload a signature in Settings before signing.")
     try:
         page_index, rel_x, rel_y, rel_w = int(page_index), float(rel_x), float(rel_y), float(rel_w)
@@ -442,7 +443,8 @@ def approve_and_sign(user, letter_id, page_index, rel_x, rel_y, rel_w, remarks="
 
             # snapshot the signature image so later signature changes never alter signed letters
             sig_copy = _path("signatures", f"sig_l{letter_id}_s{step['id']}_{uuid.uuid4().hex[:8]}.png")
-            shutil.copyfile(user["signature_path"], sig_copy)
+            shutil.copyfile(filestore.ensure(user["signature_path"]), sig_copy)
+            filestore.save(sig_copy)
             created.append(sig_copy)
 
             try:

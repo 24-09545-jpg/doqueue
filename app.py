@@ -10,6 +10,7 @@ from flask import (Flask, abort, flash, jsonify, redirect, render_template, requ
                    send_file, session, url_for)
 
 import db
+import filestore
 import pdfsign
 import workflow
 from auth import (PORTALS, check_csrf, csrf_token, current_user, home_url_for, login_required,
@@ -36,7 +37,7 @@ workflow.configure(UPLOAD_FOLDER)
 ALLOWED_DOMAIN = "@g.batstate-u.edu.ph"
 
 app.teardown_appcontext(db.close_db)
-with app.app_context():
+with app.app_context(), db.setup_lock():
     db.init_db()
     if db.ON_VERCEL:
         # Demo deployment: the database lives in /tmp and starts empty on every cold start,
@@ -133,7 +134,7 @@ def uploaded_file(filename):
     elif name.startswith(f"self_raw_{user['id']}_") or name.startswith(f"signed_self_raw_{user['id']}_"):
         allowed = True
     path = os.path.join(UPLOAD_FOLDER, name)
-    if not allowed or not os.path.isfile(path):
+    if not allowed or not filestore.exists(path):
         abort(404)
     resp = send_file(path)
     resp.headers["Cache-Control"] = "no-store"
@@ -372,8 +373,8 @@ def upload_signature():
         workflow.log_activity(user, "signature_updated", "Uploaded a new signature image")
     if old and old != path and os.path.basename(old).startswith(f"signature_user{user['id']}"):
         try:
-            os.remove(old)  # signed letters keep their own snapshot copy
-        except OSError:
+            filestore.remove(old)  # signed letters keep their own snapshot copy
+        except Exception:
             pass
 
     if is_ajax():
@@ -522,7 +523,7 @@ def document_file(letter_id):
     else:
         v = query("SELECT * FROM letter_versions WHERE id = ?", (letter["current_version_id"],), one=True)
         path = letter["working_file_path"] or v["file_path"]
-    if not path or not os.path.isfile(path):
+    if not path or not filestore.exists(path):
         abort(404)
     resp = send_file(path, mimetype="application/pdf")
     resp.headers["Cache-Control"] = "private, no-store"
@@ -537,7 +538,7 @@ def document_signed_download(doc_id):
     if access not in ("owner", "office") or letter["status"] != "fully_signed" or not letter["final_file_path"]:
         flash("The document is not fully signed yet.", "error")
         return redirect(home_url_for(user))
-    if not os.path.isfile(letter["final_file_path"]):
+    if not filestore.exists(letter["final_file_path"]):
         abort(404)
     with transaction():
         workflow.log_activity(user, "final_downloaded", f"Downloaded {letter['tracking_number']}",
@@ -663,7 +664,6 @@ def contacts_partial():
 
 # ───────────── SELF-SIGN (personal; separate from the letter workflow) ─────────────
 
-SELF_SIGN_TEMP: dict = {}
 
 
 @app.route("/p/sign-yourself")
@@ -695,10 +695,11 @@ def self_sign_temp_upload():
     except Exception:
         os.remove(raw_path)
         return jsonify({"ok": False, "error": "The uploaded file is not a valid PDF."})
+    filestore.save(raw_path)
 
     temp_id = uuid.uuid4().hex
     title, _ = splitext(original_name)
-    SELF_SIGN_TEMP[temp_id] = {
+    session["self_sign"] = {"id": temp_id,
         "owner_id": user["id"], "raw_path": raw_path,
         "original_name": original_name, "title": title or "Self-sign document",
     }
@@ -715,8 +716,8 @@ def self_sign_temp_upload():
 def self_sign_finalize():
     user = current_user()
     back = home_url_for(user) + "#sign_yourself"
-    temp = SELF_SIGN_TEMP.get(request.form.get("temp_id", ""))
-    if not temp or temp["owner_id"] != user["id"]:
+    temp = session.get("self_sign") or {}
+    if temp.get("id") != request.form.get("temp_id", "") or temp.get("owner_id") != user["id"]:
         flash("Self-sign session not found or expired. Please upload again.", "error")
         return redirect(back)
     if not user["signature_path"]:
@@ -741,7 +742,7 @@ def self_sign_finalize():
                    VALUES (?, ?, ?, ?, ?, ?)""",
                 (user["id"], temp["title"], signed_path, temp["raw_path"], temp["original_name"], now_str()))
         workflow.log_activity(user, "self_signed", f"Self-signed '{temp['original_name']}'")
-    SELF_SIGN_TEMP.pop(request.form.get("temp_id", ""), None)
+    session.pop("self_sign", None)
     flash("Self-signed PDF created and saved under Your Self-Signed PDFs.", "success")
     return redirect(back)
 
@@ -751,7 +752,7 @@ def self_sign_finalize():
 def self_sign_download(doc_id):
     user = current_user()
     doc = query("SELECT * FROM self_sign_docs WHERE id = ? AND owner_id = ?", (doc_id, user["id"]), one=True)
-    if not doc or not os.path.isfile(doc["signed_path"]):
+    if not doc or not filestore.exists(doc["signed_path"]):
         abort(404)
     return send_file(doc["signed_path"], as_attachment=True,
                      download_name=f"signed_{doc['original_name']}")
