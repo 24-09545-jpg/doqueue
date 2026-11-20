@@ -28,7 +28,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__)
 app.secret_key = os.environ.get("DSA_SECRET_KEY", "secret-key-change-me")
 app.config["MAX_CONTENT_LENGTH"] = 25 * 1024 * 1024  # 25 MB uploads
-UPLOAD_FOLDER = os.environ.get("DSA_UPLOAD_FOLDER", os.path.join(BASE_DIR, "uploads"))
+UPLOAD_FOLDER = os.environ.get("DSA_UPLOAD_FOLDER",
+                               "/tmp/uploads" if db.ON_VERCEL else os.path.join(BASE_DIR, "uploads"))
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 workflow.configure(UPLOAD_FOLDER)
 
@@ -37,6 +38,11 @@ ALLOWED_DOMAIN = "@g.batstate-u.edu.ph"
 app.teardown_appcontext(db.close_db)
 with app.app_context():
     db.init_db()
+    if db.ON_VERCEL:
+        # Demo deployment: the database lives in /tmp and starts empty on every cold start,
+        # so recreate the demo accounts (password demo1234) each time.
+        import seed_demo
+        seed_demo.main()
 
 
 # ───────────── request hooks / template helpers ─────────────

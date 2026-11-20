@@ -15,7 +15,10 @@ from contextlib import contextmanager
 from datetime import datetime
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.environ.get("DSA_DB_PATH", os.path.join(BASE_DIR, "dsa.sqlite3"))
+# On Vercel the project folder is read-only; /tmp is the only writable place (and it is temporary).
+ON_VERCEL = bool(os.environ.get("VERCEL"))
+DB_PATH = os.environ.get("DSA_DB_PATH",
+                         "/tmp/dsa.sqlite3" if ON_VERCEL else os.path.join(BASE_DIR, "dsa.sqlite3"))
 
 
 class Row(dict):

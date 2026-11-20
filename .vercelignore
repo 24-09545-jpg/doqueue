@@ -1,0 +1,8 @@
+tests/
+.venv/
+venv/
+uploads/
+*.sqlite3
+__pycache__/
+.pytest_cache/
+Start DSA System.bat
