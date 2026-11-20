@@ -231,6 +231,140 @@
       display: none;
     }
   }
+
+  /* ───── NOTIFICATIONS: the icon pops instead of a pop-up message ───── */
+  @keyframes notifPop {
+    0% { transform: scale(1); }
+    30% { transform: scale(1.45); }
+    55% { transform: scale(0.9); }
+    75% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+  }
+  @keyframes notifRing {
+    0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.55); }
+    100% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
+  }
+  @keyframes notifShake {
+    0%, 100% { transform: rotate(0); }
+    20% { transform: rotate(-14deg); }
+    40% { transform: rotate(12deg); }
+    60% { transform: rotate(-8deg); }
+    80% { transform: rotate(5deg); }
+  }
+  .side-badge.pop, .menu-badge.pop { animation: notifPop 0.6s ease, notifRing 1.2s ease-out 3; }
+  .side-link.notif-pop img { animation: notifShake 0.8s ease 2; }
+
+  /* ───── PHONE MENU (hidden on larger screens) ───── */
+  .menu-toggle {
+    display: none;
+    position: relative;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border: none;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+    flex: none;
+  }
+  .menu-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #dc2626;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .menu-badge[hidden], .side-badge[hidden] { display: none; }
+  .sidebar-backdrop { display: none; }
+
+  /* ───── PHONES & SMALL TABLETS ───── */
+  @media (max-width: 900px) {
+    /* minmax(0, 1fr): the page never grows wider than the phone screen */
+    .dashboard-shell { grid-template-columns: minmax(0, 1fr); }
+    .dash-main { min-width: 0; }
+    #content-area .status-tabs {
+      overflow-x: auto;
+      flex-wrap: nowrap;
+      -webkit-overflow-scrolling: touch;
+    }
+    #content-area .status-filters { flex-wrap: wrap; }
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 270px;
+      max-width: 85vw;
+      z-index: 60;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: flex-start;
+      border-right: 1px solid #e5e7eb;
+      border-bottom: none;
+      overflow-y: auto;
+      transform: translateX(-100%);
+      transition: transform 0.25s ease;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25);
+    }
+    .sidebar-nav { flex-direction: column; gap: 4px; }
+    .sidebar-footer { display: block; }
+    body.menu-open .sidebar { transform: none; }
+    body.menu-open .sidebar-backdrop {
+      display: block;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.35);
+      z-index: 55;
+    }
+    .menu-toggle { display: inline-flex; }
+
+    .dash-topbar { padding: 8px 12px; }
+    .dash-topbar-left { font-size: 15px; gap: 8px; min-width: 0; }
+    .dash-topbar-left span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .dash-topbar-left img { width: 32px !important; height: 29px !important; }
+    .clock-date { display: none; }
+    .clock-time { font-size: 14px; white-space: nowrap; }
+    .dash-header-white { padding: 6px 12px; }
+    .dash-content { padding: 12px; }
+
+    /* wide tables scroll sideways instead of squeezing the page */
+    #content-area table, #doc-modal table {
+      display: block;
+      max-width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* letter details / signing window uses the whole screen */
+    #doc-modal .review-backdrop { align-items: stretch; }
+    #doc-modal .review-modal {
+      max-width: 100%;
+      max-height: none;
+      height: 100%;
+      border-radius: 0;
+    }
+    #doc-modal .review-body { overflow-y: auto; }
+    #doc-modal .review-left, #doc-modal .review-right { max-height: none; }
+    #doc-modal .review-right { min-height: 70vh; }
+  }
+
+  @media (max-width: 480px) {
+    .dash-topbar-right { display: none; }
+    .dash-topbar-left span { font-size: 14px; }
+  }
 </style>
 
 <div class="dashboard-page">
@@ -266,11 +400,13 @@
         © Batangas State University
       </div>
     </aside>
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
 
     <!-- MAIN PANEL -->
     <main class="dash-main">
       <div class="dash-topbar">
         <div class="dash-topbar-left">
+          <button type="button" class="menu-toggle" id="menu-toggle" aria-label="Open menu">&#9776;<span class="menu-badge" id="menu-badge"{% if not unread_notifications %} hidden{% endif %}>{{ unread_notifications }}</span></button>
           <img src="{{ url_for('static', filename='img/bsu_logo.png') }}" alt="BSU Logo" style="width:40px; height:36px;">
           <span>Batangas State University</span>
         </div>
@@ -499,8 +635,17 @@
       if (history.replaceState) history.replaceState(null, '', '#' + page);
       loadPage(url);
       if (page === 'notifications') setBadge(0);
+      document.body.classList.remove('menu-open');
     });
   });
+
+  // Phone menu: the sidebar slides in from the left
+  (function () {
+    const toggle = document.getElementById('menu-toggle');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    if (toggle) toggle.addEventListener('click', () => document.body.classList.toggle('menu-open'));
+    if (backdrop) backdrop.addEventListener('click', () => document.body.classList.remove('menu-open'));
+  })();
 
   // Reload the current tab (used after actions and by auto-refresh)
   window.reloadCurrentPage = function () {
@@ -552,46 +697,36 @@
 
   // ---------- Notifications badge + automatic refresh ----------
   function setBadge(n) {
-    const b = document.getElementById('notif-badge');
-    if (!b) return;
-    b.textContent = n;
-    b.hidden = !n;
+    ['notif-badge', 'menu-badge'].forEach(id => {
+      const b = document.getElementById(id);
+      if (!b) return;
+      b.textContent = n;
+      b.hidden = !n;
+    });
   }
   let lastStamp = null;
   let lastNotif = null;          // newest notification id this page has already shown
   const baseTitle = document.title;
   const AUTO_REFRESH_PAGES = ['dashboard', 'history', 'letters'];
-  const SIGN_KINDS = ['queue', 'waiting_signature'];
 
-  function openNotification(n) {
-    if (n.letter_id && window.openDocModal) {
-      window.openDocModal("{{ url_for('document_view', letter_id=0) }}".replace(/0$/, n.letter_id));
-    } else {
-      const link = document.querySelector('.side-link[data-page="notifications"]');
-      if (link) link.click();
-    }
+  // No pop-up message for notifications: the Notifications icon and its count pop instead.
+  function restart(el, cls) {
+    if (!el) return;
+    el.classList.remove(cls);
+    void el.offsetWidth;          // restart the CSS animation
+    el.classList.add(cls);
+  }
+  function popBadge() {
+    ['notif-badge', 'menu-badge'].forEach(id => {
+      const b = document.getElementById(id);
+      if (b && !b.hidden) restart(b, 'pop');
+    });
+    restart(document.querySelector('.side-link[data-page="notifications"]'), 'notif-pop');
   }
 
   function popNotifications(data) {
-    if (lastNotif === null) {
-      // first check after the page opens / after login: one reminder
-      if (data.unread_to_sign > 0) {
-        showFlash('info', data.unread_to_sign === 1
-          ? 'You have a new letter waiting for your signature.'
-          : 'You have ' + data.unread_to_sign + ' new letters waiting for your signature.',
-          { duration: 9000, onClick: () => { const l = document.querySelector('.side-link[data-page="dashboard"]'); if (l) l.click(); } });
-      } else if (data.unread > 0) {
-        showFlash('info', 'You have ' + data.unread + ' unread notification' + (data.unread === 1 ? '' : 's') + '.',
-          { duration: 7000, onClick: () => { const l = document.querySelector('.side-link[data-page="notifications"]'); if (l) l.click(); } });
-      }
-    } else {
-      // something new arrived while the page was open: pop each one up
-      (data.new || []).forEach(n => {
-        const toSign = SIGN_KINDS.includes(n.kind);
-        showFlash(toSign ? 'success' : 'info', (toSign ? 'Letter to sign: ' : '') + n.message,
-                  { duration: toSign ? 12000 : 8000, onClick: () => openNotification(n) });
-      });
-    }
+    const firstCheck = lastNotif === null;
+    if ((firstCheck && data.unread > 0) || (!firstCheck && (data.new || []).length)) popBadge();
     lastNotif = data.last_notification;
     document.title = data.unread ? '(' + data.unread + ') ' + baseTitle : baseTitle;
   }

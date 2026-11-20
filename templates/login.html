@@ -149,6 +149,13 @@
     text-decoration: underline;
   }
 
+  @media (max-width: 600px) {
+    .login-outer { padding: 18px 12px 28px; }
+    .login-card { padding: 18px 16px; }
+    .form-group input { font-size: 16px; }   /* stops phones from zooming in on tap */
+    .portal-subheader { font-size: 13px; }
+  }
+
   @media (max-height: 700px) {
     /* If the screen is really short, allow a bit of scroll instead of breaking */
     .page-bg {
