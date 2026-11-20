@@ -1,0 +1,69 @@
+{# Moderator Portal – all letters (monitoring) #}
+{% import "partials/_macros.html" as m with context %}
+{% include "partials/_components.html" %}
+
+<div class="welcome-block">
+  <div class="welcome-title">Letters</div>
+  <div class="welcome-sub">Overall signing progress of every submitted letter. Moderators see status and history, not file contents.</div>
+</div>
+
+<div class="status-shell">
+  <div class="status-panel-header">All Letters</div>
+  <div class="status-panel-sub">Filter by status or search by title, organization or tracking number.</div>
+  <div class="status-panel-body">
+    <form class="status-filters" id="mod-letters-filter">
+      <input class="status-filter-input" type="text" name="q" value="{{ q }}" placeholder="Search…">
+      <select class="status-filter-select" name="status">
+        <option value="">All statuses</option>
+        <option value="in_progress" {% if status == 'in_progress' %}selected{% endif %}>Pending / in process</option>
+        {% for key, label in LETTER_STATUS_LABELS.items() if key not in ('approved',) %}
+          <option value="{{ key }}" {% if status == key %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-secondary">Filter</button>
+    </form>
+
+    {% if letters %}
+      <div class="table-scroll">
+      <table class="status-table">
+        <thead>
+          <tr>
+            <th style="width:50px;">ID</th><th>Title</th><th>Organization</th>
+            <th style="width:200px;">Progress</th><th>Current Office</th><th style="width:150px;">Status</th>
+            <th>Tracking No.</th><th>Updated</th><th style="width:80px;">Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for l in letters %}
+            <tr>
+              <td style="text-align:center;">{{ l.id }}</td>
+              <td>{{ l.title }}</td>
+              <td>{{ l.organization_name }}</td>
+              <td>{{ m.progress_bar(l.progress) }}</td>
+              <td>{{ l.current_office or '—' }}</td>
+              <td>{{ m.status_pill(l.status) }}</td>
+              <td>{{ l.tracking_number or '—' }}</td>
+              <td>{{ l.updated_at|dt }}</td>
+              <td style="text-align:center;"><a href="{{ url_for('document_view', letter_id=l.id) }}" class="view-link" data-modal="true">View</a></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    {% else %}
+      <div class="empty-state">No letters match.</div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+(function () {
+  const f = document.getElementById('mod-letters-filter');
+  if (!f) return;
+  f.addEventListener('submit', function (e) {
+    e.preventDefault();
+    const params = new URLSearchParams(new FormData(f));
+    window.loadIntoContent("{{ url_for('moderator.letters_partial') }}?" + params.toString());
+  });
+})();
+</script>

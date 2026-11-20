@@ -1,0 +1,35 @@
+{% import "partials/_macros.html" as m with context %}
+{% for o in directory %}
+  <tr>
+    <td style="text-align:center;">{{ o.hierarchy_order if o.hierarchy_order and o.is_active else '—' }}</td>
+    <td>
+      <strong>{{ o.name }}</strong>
+      {% if o.description %}<div class="small">{{ o.description }}</div>{% endif %}
+      {% if o.location %}<div class="small">{{ o.location }}</div>{% endif %}
+    </td>
+    <td>
+      {% if o.signatory_name %}
+        {{ o.signatory_name }}{% if o.signatory_position %}<div class="small">{{ o.signatory_position }}</div>{% endif %}
+      {% elif o.staff %}
+        {{ o.staff|join(', ') }}
+      {% else %}
+        <span class="muted">Not assigned</span>
+      {% endif %}
+    </td>
+    <td>
+      {% if o.contact_email %}<div>{{ o.contact_email }}</div>{% endif %}
+      {% if o.contact_phone %}<div class="small">{{ o.contact_phone }}</div>{% endif %}
+      {% if not o.contact_email and not o.contact_phone %}<span class="muted">—</span>{% endif %}
+    </td>
+    <td>
+      {{ m.status_pill(o.availability_key, o.availability) }}
+      {% if o.availability_note %}<div class="small">{{ o.availability_note }}</div>{% endif %}
+      {% if o.availability_updated_at %}<div class="small">Updated {{ o.availability_updated_at|dt }}</div>{% endif %}
+    </td>
+    <td class="small">
+      {{ o.queued_count }} waiting &middot; {{ o.processing_count }} processing
+    </td>
+  </tr>
+{% else %}
+  <tr><td colspan="6" class="empty-state" style="padding:20px;">No offices match your search.</td></tr>
+{% endfor %}

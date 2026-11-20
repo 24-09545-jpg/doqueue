@@ -1,0 +1,101 @@
+{# Moderator Portal – office management #}
+{% import "partials/_macros.html" as m with context %}
+{% include "partials/_components.html" %}
+
+<div class="welcome-block">
+  <div class="welcome-title">Offices</div>
+  <div class="welcome-sub">Add, edit, deactivate offices and choose each office's designated signatory. Changes appear immediately in the office directory.</div>
+</div>
+
+<div class="panel">
+  <div class="panel-title">Add Office</div>
+  <div class="panel-sub">After adding, create a signatory account for it (Accounts) and add it to the Signing Hierarchy.</div>
+  <form method="post" action="{{ url_for('moderator.office_save') }}">
+    <div class="form-grid">
+      <div class="form-row"><label class="form-label">Office name *</label><input class="form-input" name="name" required></div>
+      <div class="form-row"><label class="form-label">Location</label><input class="form-input" name="location"></div>
+      <div class="form-row"><label class="form-label">Contact email</label><input class="form-input" type="email" name="contact_email"></div>
+      <div class="form-row"><label class="form-label">Contact number</label><input class="form-input" name="contact_phone"></div>
+    </div>
+    <div class="form-row"><label class="form-label">Description</label><textarea class="form-textarea" name="description" rows="2"></textarea></div>
+    <button type="submit" class="btn btn-primary">Add Office</button>
+  </form>
+</div>
+
+<div class="status-shell">
+  <div class="status-panel-header">All Offices</div>
+  <div class="status-panel-sub">Click "Edit" to update details or change the designated signatory. Letters already in progress keep their route.</div>
+  <div class="status-panel-body">
+    <div class="table-scroll">
+    <table class="status-table">
+      <thead>
+        <tr>
+          <th>Office</th><th>Designated Signatory</th><th>Contact</th><th style="width:70px;">Route Step</th>
+          <th style="width:100px;">Status</th><th style="width:170px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in offices %}
+          {% set office_accounts = accounts|selectattr('office_id','equalto',o.id)|list %}
+          <tr>
+            <td><strong>{{ o.name }}</strong>{% if o.description %}<div class="small">{{ o.description }}</div>{% endif %}</td>
+            <td>{{ o.signatory_name or '—' }}{% if o.signatory_name and not o.signatory_active %} <span class="small">(inactive)</span>{% endif %}</td>
+            <td>{{ o.contact_email or '' }}{% if o.contact_phone %}<div class="small">{{ o.contact_phone }}</div>{% endif %}</td>
+            <td style="text-align:center;">{{ o.hierarchy_order or '—' }}</td>
+            <td>{{ m.status_pill('Available' if o.is_active else 'Unavailable', 'Active' if o.is_active else 'Inactive') }}</td>
+            <td>
+              <details class="row-edit">
+                <summary class="view-link">Edit</summary>
+              </details>
+              <form method="post" action="{{ url_for('moderator.office_toggle', office_id=o.id) }}" class="inline-form"
+                    onsubmit="return confirm('{{ 'Deactivate' if o.is_active else 'Reactivate' }} {{ o.name|e }}?');">
+                <button type="submit" class="view-link" style="color:{{ '#b91c1c' if o.is_active else '#166534' }};">
+                  {{ 'Deactivate' if o.is_active else 'Reactivate' }}
+                </button>
+              </form>
+            </td>
+          </tr>
+          <tr class="office-edit-row" data-for="{{ o.id }}" style="display:none;">
+            <td colspan="6">
+              <form method="post" action="{{ url_for('moderator.office_save') }}" class="edit-box">
+                <input type="hidden" name="id" value="{{ o.id }}">
+                <div class="form-grid">
+                  <div class="form-row"><label class="form-label">Office name *</label><input class="form-input" name="name" value="{{ o.name }}" required></div>
+                  <div class="form-row"><label class="form-label">Location</label><input class="form-input" name="location" value="{{ o.location }}"></div>
+                  <div class="form-row"><label class="form-label">Contact email</label><input class="form-input" type="email" name="contact_email" value="{{ o.contact_email }}"></div>
+                  <div class="form-row"><label class="form-label">Contact number</label><input class="form-input" name="contact_phone" value="{{ o.contact_phone }}"></div>
+                </div>
+                <div class="form-row"><label class="form-label">Description</label><textarea class="form-textarea" name="description" rows="2">{{ o.description }}</textarea></div>
+                <div class="form-row">
+                  <label class="form-label">Designated signatory</label>
+                  <select class="form-select" name="signatory_user_id">
+                    <option value="">— None (any office account may sign) —</option>
+                    {% for a in office_accounts if a.is_active %}
+                      <option value="{{ a.id }}" {% if a.id == o.signatory_user_id %}selected{% endif %}>{{ a.name }} ({{ a.email }}){% if a.position %} – {{ a.position }}{% endif %}</option>
+                    {% endfor %}
+                  </select>
+                  {% if not office_accounts %}<div class="hint">This office has no accounts yet. Create one under Accounts.</div>{% endif %}
+                </div>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="6" class="empty-state">No offices yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  document.querySelectorAll('details.row-edit').forEach(function (d) {
+    d.addEventListener('toggle', function () {
+      const row = d.closest('tr').nextElementSibling;
+      if (row && row.classList.contains('office-edit-row')) row.style.display = d.open ? '' : 'none';
+    });
+  });
+})();
+</script>

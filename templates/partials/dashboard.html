@@ -1,0 +1,779 @@
+{# templates/partials/dashboard.html – organization (User Portal) dashboard #}
+{% import "partials/_macros.html" as m with context %}
+
+{# Categorize letters for each tab #}
+{% set need_sign = returned_letters %}
+{% set total_docs = letters|length %}
+{% set default_tab = 'need' if returned_letters else 'progress' %}
+
+<style>
+  .welcome-block {
+    margin-bottom: 18px;
+  }
+
+  .welcome-title {
+    font-family: 'Poppins', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 4px;
+  }
+
+  .welcome-sub {
+    font-size: 13px;
+    color: #6b7280;
+  }
+
+  .summary-strip {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .summary-card {
+    background: #ffffff;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    padding: 10px 12px;
+    font-size: 12px;
+    box-shadow: var(--shadow-xs);
+  }
+
+  .summary-label {
+    color: #6b7280;
+    text-transform: uppercase;
+    font-weight: 600;
+    font-size: 11px;
+    margin-bottom: 3px;
+  }
+
+  .summary-value {
+    font-family: 'Poppins', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  /* ---------- Main status panel with tabs ---------- */
+  .status-shell {
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    box-shadow: var(--shadow-sm);
+    margin-top: 6px;
+    overflow: hidden;
+  }
+
+  .status-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 10px 16px 0;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb;
+  }
+
+  .status-tab {
+    position: relative;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 400;
+    border-radius: 999px 999px 0 0;
+    border: 1px solid transparent;
+    border-bottom: 1px solid transparent; /* keep height static */
+    background: #f9fafb;
+    color: #6b7280;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  }
+
+  .status-tab img {
+    opacity: 0.35;
+    filter: grayscale(1);
+    transition: opacity 0.12s ease, filter 0.12s ease;
+  }
+
+  .status-tab-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    border: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: #6b7280;
+    background: #f3f4f6;
+  }
+
+  .status-tab.active {
+    background: #ffffff;
+    color: #b91c1c;
+    border-color: #e5e7eb;
+    border-bottom: 1px solid #ffffff;
+    font-weight: 600;
+  }
+
+  .status-tab.active img {
+    opacity: 1;
+    filter: none; /* colored when active */
+  }
+
+  .status-tab[data-tab="need"].active .status-tab-dot {
+    background: #fee2e2;
+    border-color: #fca5a5;
+    color: #b91c1c;
+  }
+
+  .status-tab[data-tab="progress"].active .status-tab-dot {
+    background: #fef9c3;
+    border-color: #fde68a;
+    color: #b45309;
+  }
+
+  .status-tab[data-tab="completed"].active .status-tab-dot {
+    background: #dcfce7;
+    border-color: #86efac;
+    color: #166534;
+  }
+
+  .status-tab[data-tab="declined"].active .status-tab-dot {
+    background: #fee2e2;
+    border-color: #fecaca;
+    color: #b91c1c;
+  }
+
+  .status-tab-label {
+    white-space: nowrap;
+  }
+
+  .status-panel-header {
+    padding: 10px 16px 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: #111827;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .status-panel-sub {
+    padding: 2px 16px 10px;
+    font-size: 12px;
+    color: #6b7280;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .status-panel-body {
+    padding: 14px 16px 16px;
+  }
+
+  .tab-pane {
+    display: none;
+  }
+
+  .tab-pane.active {
+    display: block;
+  }
+
+  /* table + pills */
+  table.status-table {
+    width: 100%;
+    font-size: 13px;
+    border-collapse: collapse;
+  }
+
+  table.status-table thead tr {
+    background: #f3f4f6;
+  }
+
+  table.status-table th {
+    padding: 6px 8px;
+    text-align: center;
+    border-bottom: 1px solid #e5e7eb;
+    border-left: 1px solid #e5e7eb;
+    vertical-align: middle;
+  }
+
+  .status-ongoing {
+  background: #fff5cb;   /* yellow-ish */
+  color: #f7c500;
+}
+
+  table.status-table td {
+    padding: 6px 8px;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+    border-left: 1px solid #e5e7eb;
+    vertical-align: top;
+  }
+
+  .status-pill {
+    display: inline-block;
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .status-pending {
+    background: #e0ecff;
+    color: lch(39.02% 83.15 296.25);
+  }
+
+  .status-viewed {
+    background: #cffafe;
+    color: #0369a1;
+  }
+
+  .status-declined-pill {
+    background: #fee2e2;
+    color: #b91c1c;
+  }
+
+  .status-completed-pill {
+    background: #dcfce7;
+    color: #166534;
+  }
+
+  .view-link {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;  /* fixed weight so column doesn’t jump */
+    color: #2563eb;
+    text-decoration: none;
+  }
+
+  .view-link:hover {
+    text-decoration: underline;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 10px;
+    font-size: 13px;
+    color: #9ca3af;
+  }
+
+  /* modal */
+  .doc-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .doc-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+  }
+
+  .doc-modal-dialog {
+    position: relative;
+    background: #ffffff;
+    border-radius: 14px;
+    max-width: 960px;
+    width: 100%;
+    max-height: 90vh;
+    overflow: hidden;
+    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.35);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .doc-modal-body {
+    padding: 16px 18px 18px;
+    overflow-y: auto;
+  }
+
+  .doc-modal-close {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    border: none;
+    background: #f3f4f6;
+    border-radius: 999px;
+    width: 28px;
+    height: 28px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  .doc-modal-close:hover {
+    background: #e5e7eb;
+  }
+
+  @media (max-width: 900px) {
+    .summary-strip {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .status-tabs {
+      flex-wrap: wrap;
+    }
+  }
+</style>
+{% include "partials/_components.html" %}
+
+<div class="welcome-block">
+  <div class="welcome-title">Dashboard</div>
+  <div class="welcome-sub">
+    Track the signing progress of your organization's letters, read signatory remarks, and download fully signed documents.
+  </div>
+</div>
+
+{% if site.announcement %}
+  <div class="announce-box"><strong>Announcement</strong>{{ site.announcement }}</div>
+{% endif %}
+
+<div class="summary-strip">
+  <div class="summary-card">
+    <div class="summary-label">Total Letters</div>
+    <div class="summary-value">{{ total_docs }}</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Returned for Revision</div>
+    <div class="summary-value">{{ need_sign|length }}</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">In Progress</div>
+    <div class="summary-value">{{ in_progress|length }}</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Fully Signed</div>
+    <div class="summary-value">{{ completed_docs|length }}</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Disapproved / Expired</div>
+    <div class="summary-value">{{ declined_docs|length }}</div>
+  </div>
+</div>
+
+<div class="status-shell">
+  <!-- Tabs -->
+  <div class="status-tabs">
+    <button type="button" class="status-tab{% if default_tab == 'need' %} active{% endif %}" data-tab="need">
+      <img src="{{ url_for('static', filename='img/icon/need.png') }}" style="width:15px">
+      <span class="status-tab-label">Returned for Revision</span>
+    </button>
+    <button type="button" class="status-tab{% if default_tab == 'progress' %} active{% endif %}" data-tab="progress">
+      <img src="{{ url_for('static', filename='img/icon/clock.png') }}" style="width:15px">
+      <span class="status-tab-label">In Progress</span>
+    </button>
+    <button type="button" class="status-tab" data-tab="completed">
+      <img src="{{ url_for('static', filename='img/icon/tick.png') }}" style="width:15px">
+      <span class="status-tab-label">Completed</span>
+    </button>
+    <button type="button" class="status-tab" data-tab="declined">
+      <span class="status-tab-dot">✕</span>
+      <span class="status-tab-label">Disapproved</span>
+    </button>
+    <button type="button" class="status-tab" data-tab="cancelled">
+      <span class="status-tab-dot">⊘</span>
+      <span class="status-tab-label">Cancelled</span>
+    </button>
+  </div>
+
+  <!-- Panel header -->
+  <div class="status-panel-header" id="status-panel-title"></div>
+  <div class="status-panel-sub" id="status-panel-sub"></div>
+
+  <!-- Tab contents -->
+  <div class="status-panel-body">
+
+    {# shared filters styling #}
+    <style>
+      .status-filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 6px 0 10px;
+        align-items: center;
+      }
+      .status-filter-input {
+        flex: 1 1 160px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid #d1d5db;
+        font-size: 13px;
+      }
+      .status-filter-select {
+        flex: 0 0 auto;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid #d1d5db;
+        font-size: 13px;
+        background: #ffffff;
+      }
+    </style>
+
+    <!-- Returned for Revision -->
+    <div class="tab-pane{% if default_tab == 'need' %} active{% endif %}" data-tab="need">
+      {% if need_sign %}
+        <div class="status-filters">
+          <input id="need-search" class="status-filter-input" type="text" placeholder="Search by title…">
+          <select id="need-sort" class="status-filter-select">
+            <option value="recent_desc">Sort: Most recent</option>
+            <option value="expiry_asc">Expiry: soonest first</option>
+            <option value="expiry_desc">Expiry: latest first</option>
+          </select>
+        </div>
+        <div class="table-scroll">
+        <table id="need-table" class="status-table">
+          <thead>
+            <tr>
+              <th style="width:60px;">Sr No.</th>
+              <th>Title</th>
+              <th>Returned By</th>
+              <th style="width:280px;">Reason / Remarks</th>
+              <th>Date</th>
+              <th style="width:120px;">Status</th>
+              <th style="width:110px;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for doc in need_sign %}
+            <tr class="need-row" data-title="{{ doc.title|lower }}" data-recent="{{ doc.id }}" data-expiry="{{ doc.expiry_date or '' }}">
+              <td style="text-align:center;">{{ loop.index }}</td>
+              <td>{{ doc.title }}</td>
+              <td>{{ doc.progress.stopped_at or (doc.decision_comment.office_name if doc.decision_comment else '—') }}</td>
+              <td>{{ doc.decision_comment.body if doc.decision_comment else '—' }}</td>
+              <td>{{ doc.updated_at|dt }}</td>
+              <td>{{ m.status_pill(doc.status) }}</td>
+              <td style="text-align:center;">
+                <a href="{{ url_for('document_view', letter_id=doc.id) }}" class="view-link" data-modal="true">View &amp; Resubmit</a>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        </div>
+      {% else %}
+        <div class="empty-state">No letters need revision.</div>
+      {% endif %}
+    </div>
+
+    <!-- In Progress (progress tracker) -->
+    <div class="tab-pane{% if default_tab == 'progress' %} active{% endif %}" data-tab="progress">
+      {% if in_progress %}
+        <div class="status-filters">
+          <input id="progress-search" class="status-filter-input" type="text" placeholder="Search by title…">
+          <select id="progress-sort" class="status-filter-select">
+            <option value="recent_desc">Sort: Most recent</option>
+            <option value="expiry_asc">Expiry: soonest first</option>
+            <option value="expiry_desc">Expiry: latest first</option>
+          </select>
+        </div>
+        <div class="table-scroll">
+        <table id="progress-table" class="status-table">
+          <thead>
+            <tr>
+              <th style="width:60px;">Sr No.</th>
+              <th>Title</th>
+              <th style="width:210px;">Signing Progress</th>
+              <th>Current Office</th>
+              <th style="width:150px;">Status</th>
+              <th>Latest Update</th>
+              <th>Expiry Date</th>
+              <th style="width:90px;">Details</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for doc in in_progress %}
+            <tr class="progress-row" data-title="{{ doc.title|lower }}" data-recent="{{ doc.id }}" data-expiry="{{ doc.expiry_date or '' }}">
+              <td style="text-align:center;">{{ loop.index }}</td>
+              <td>
+                {{ doc.title }}
+                {% if doc.comment_count %}<div class="small">{{ doc.comment_count }} remark{{ 's' if doc.comment_count != 1 }} from signatories</div>{% endif %}
+              </td>
+              <td>{{ m.progress_bar(doc.progress) }}</td>
+              <td>{{ doc.progress.current_office or '—' }}</td>
+              <td>{{ m.status_pill(doc.status) }}</td>
+              <td>{{ doc.updated_at|dt }}</td>
+              <td>{{ doc.expiry_date|dt(False) if doc.expiry_date else '—' }}</td>
+              <td style="text-align:center;">
+                <a href="{{ url_for('document_view', letter_id=doc.id) }}" class="view-link" data-modal="true">View Details</a>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        </div>
+      {% else %}
+        <div class="empty-state">No letters in progress.</div>
+      {% endif %}
+    </div>
+
+    <!-- Completed -->
+    <div class="tab-pane" data-tab="completed">
+      {% if completed_docs %}
+        <div class="status-filters">
+          <input id="completed-search" class="status-filter-input" type="text" placeholder="Search by title or tracking no.…">
+          <select id="completed-sort" class="status-filter-select">
+            <option value="recent_desc">Sort: Most recent</option>
+            <option value="expiry_asc">Expiry: soonest first</option>
+            <option value="expiry_desc">Expiry: latest first</option>
+          </select>
+        </div>
+        <div class="table-scroll">
+        <table id="completed-table" class="status-table">
+          <thead>
+            <tr>
+              <th style="width:60px;">Sr No.</th>
+              <th>Title</th>
+              <th>Tracking No.</th>
+              <th style="width:250px">Signed By</th>
+              <th>Completed</th>
+              <th style="width:120px;">Status</th>
+              <th style="width:120px;">File</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for doc in completed_docs %}
+            <tr class="completed-row" data-title="{{ doc.title|lower }} {{ (doc.tracking_number or '')|lower }}" data-recent="{{ doc.id }}" data-expiry="{{ doc.expiry_date or '' }}">
+              <td style="text-align:center;">{{ loop.index }}</td>
+              <td>{{ doc.title }}</td>
+              <td><strong>{{ doc.tracking_number }}</strong></td>
+              <td>
+                {% for s in doc.progress.steps %}
+                  {{ s.office_name }}{% if s.acted_by_name %} <span class="small">({{ s.acted_by_name }})</span>{% endif %}{% if not loop.last %}<br>{% endif %}
+                {% endfor %}
+              </td>
+              <td>{{ doc.completed_at|dt }}</td>
+              <td>{{ m.status_pill('fully_signed') }}</td>
+              <td style="text-align:center;">
+                <a href="{{ url_for('document_signed_download', doc_id=doc.id) }}" class="view-link">Download</a><br>
+                <a href="{{ url_for('document_view', letter_id=doc.id) }}" class="view-link" data-modal="true">View Details</a>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        </div>
+      {% else %}
+        <div class="empty-state">No fully signed letters yet.</div>
+      {% endif %}
+    </div>
+
+    <!-- Disapproved / Expired -->
+    <div class="tab-pane" data-tab="declined">
+      {% if declined_docs %}
+        <div class="status-filters">
+          <input id="declined-search" class="status-filter-input" type="text" placeholder="Search by title…">
+          <select id="declined-sort" class="status-filter-select">
+            <option value="recent_desc">Sort: Most recent</option>
+            <option value="expiry_asc">Expiry: soonest first</option>
+            <option value="expiry_desc">Expiry: latest first</option>
+          </select>
+        </div>
+        <div class="table-scroll">
+        <table id="declined-table" class="status-table">
+          <thead>
+            <tr>
+              <th style="width:60px;">Sr No.</th>
+              <th>Title</th>
+              <th>Disapproved / Expired By</th>
+              <th>Reason</th>
+              <th style="width:120px;">Status</th>
+              <th style="width:110px;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for doc in declined_docs %}
+            <tr class="declined-row" data-title="{{ doc.title|lower }}" data-recent="{{ doc.id }}" data-expiry="{{ doc.expiry_date or '' }}">
+              <td style="text-align:center;">{{ loop.index }}</td>
+              <td>{{ doc.title }}</td>
+              <td>
+                {% if doc.status == 'expired' %}System{% else %}{{ doc.progress.stopped_at or (doc.decision_comment.office_name if doc.decision_comment else '—') }}{% endif %}
+              </td>
+              <td>
+                {% if doc.status == 'expired' %}Expired (deadline {{ doc.expiry_date|dt(False) }} passed){% else %}{{ doc.decision_comment.body if doc.decision_comment else '—' }}{% endif %}
+              </td>
+              <td>{{ m.status_pill(doc.status) }}</td>
+              <td style="text-align:center;">
+                <a href="{{ url_for('document_view', letter_id=doc.id) }}" class="view-link" data-modal="true">View &amp; Resubmit</a>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        </div>
+      {% else %}
+        <div class="empty-state">No disapproved or expired letters.</div>
+      {% endif %}
+    </div>
+
+    <!-- Cancelled (deleted requests) -->
+    <div class="tab-pane" data-tab="cancelled">
+      {% if cancelled_docs %}
+        <div class="status-filters">
+          <input id="cancelled-search" class="status-filter-input" type="text" placeholder="Search by title…">
+          <select id="cancelled-sort" class="status-filter-select">
+            <option value="recent_desc">Sort: Most recent</option>
+            <option value="expiry_asc">Expiry: soonest first</option>
+            <option value="expiry_desc">Expiry: latest first</option>
+          </select>
+        </div>
+        <div class="table-scroll">
+        <table id="cancelled-table" class="status-table">
+          <thead>
+            <tr>
+              <th style="width:60px;">Sr No.</th>
+              <th>Title</th>
+              <th>Deleted By</th>
+              <th>Deleted On</th>
+              <th>Was With</th>
+              <th>Signed Before Deletion</th>
+              <th style="width:120px;">Status</th>
+              <th style="width:90px;">Details</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for doc in cancelled_docs %}
+            <tr class="cancelled-row" data-title="{{ doc.title|lower }}" data-recent="{{ doc.id }}" data-expiry="{{ doc.expiry_date or '' }}">
+              <td style="text-align:center;">{{ loop.index }}</td>
+              <td>{{ doc.title }}</td>
+              <td>{{ doc.deleted_by or '—' }}</td>
+              <td>{{ doc.deleted_at|dt if doc.deleted_at else doc.updated_at|dt }}</td>
+              <td>{{ doc.was_at or '—' }}</td>
+              <td>{{ doc.signed_before }} of {{ doc.total_steps }}</td>
+              <td>{{ m.status_pill('withdrawn', 'Cancelled') }}</td>
+              <td style="text-align:center;">
+                <a href="{{ url_for('document_view', letter_id=doc.id) }}" class="view-link" data-modal="true">View Details</a>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        </div>
+      {% else %}
+        <div class="empty-state">No cancelled requests.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% include "partials/office_directory.html" %}
+
+<script>
+  window.initDashboardTableFilters = function () {
+
+    function parseExpiry(str) {
+      if (!str) return null;
+      const parts = str.split("-");
+      if (parts.length !== 3) return null;
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10) - 1;
+      const d = parseInt(parts[2], 10);
+      const t = new Date(y, m, d).getTime();
+      return isNaN(t) ? null : t;
+    }
+
+    function wireTable(tableId, rowSelector, searchId, sortId) {
+      const table = document.getElementById(tableId);
+      const searchInput = document.getElementById(searchId);
+      const sortSelect = document.getElementById(sortId);
+      if (!table || !searchInput || !sortSelect) return;
+
+      const tbody = table.querySelector("tbody");
+      if (!tbody) return;
+
+      function refresh() {
+        const q = (searchInput.value || "").trim().toLowerCase();
+        const sort = sortSelect.value;
+        const rows = Array.from(tbody.querySelectorAll(rowSelector));
+
+        // filter by title
+        rows.forEach(row => {
+          const title = (row.dataset.title || "").toLowerCase();
+          const show = !q || title.includes(q);
+          row.style.display = show ? "" : "none";
+        });
+
+        // sort visible rows
+        const visible = rows.filter(r => r.style.display !== "none");
+
+        visible.sort((a, b) => {
+          const recentA = parseInt(a.dataset.recent || "0", 10);
+          const recentB = parseInt(b.dataset.recent || "0", 10);
+          const expA = parseExpiry(a.dataset.expiry || "");
+          const expB = parseExpiry(b.dataset.expiry || "");
+
+          if (sort === "recent_desc") {
+            return recentB - recentA;  // bigger id first
+          }
+          if (sort === "expiry_asc") {
+            if (expA === null && expB === null) return 0;
+            if (expA === null) return 1;
+            if (expB === null) return -1;
+            return expA - expB;      // earliest first
+          }
+          if (sort === "expiry_desc") {
+            if (expA === null && expB === null) return 0;
+            if (expA === null) return -1;
+            if (expB === null) return 1;
+            return expB - expA;      // latest first
+          }
+          return 0;
+        });
+
+        // re-append in new order
+        visible.forEach(r => tbody.appendChild(r));
+      }
+
+      searchInput.addEventListener("input", refresh);
+      sortSelect.addEventListener("change", refresh);
+      refresh();
+    }
+
+    wireTable("need-table",      ".need-row",      "need-search",      "need-sort");
+    wireTable("progress-table",  ".progress-row",  "progress-search",  "progress-sort");
+    wireTable("completed-table", ".completed-row", "completed-search", "completed-sort");
+    wireTable("declined-table",  ".declined-row",  "declined-search",  "declined-sort");
+    wireTable("cancelled-table", ".cancelled-row", "cancelled-search", "cancelled-sort");
+  };
+
+  // run immediately (works for full page or AJAX-injected partial)
+  window.initDashboardTableFilters && window.initDashboardTableFilters();
+</script>
+
+<script>
+  (function() {
+    const tabs   = document.querySelectorAll('.status-tab');
+    const panes  = document.querySelectorAll('.tab-pane');
+    const titleEl = document.getElementById('status-panel-title');
+    const subEl   = document.getElementById('status-panel-sub');
+
+    const titles = {
+      need:      'Returned for Revision',
+      progress:  'In Progress Letters',
+      completed: 'Completed Letters',
+      declined:  'Disapproved / Expired Letters',
+      cancelled: 'Cancelled Requests'
+    };
+
+    const subs = {
+      need:      'Letters returned by a signatory office. Read the remarks, revise, and resubmit.',
+      progress:  'Letters moving through the signing hierarchy. Progress updates automatically as offices sign.',
+      completed: 'Fully signed letters with their DSA tracking numbers.',
+      declined:  'Letters that were disapproved or expired. You can revise and resubmit them.',
+      cancelled: 'Signing requests your organization deleted. They are kept here for your records.'
+    };
+
+    function activate(tabName) {
+      tabs.forEach(t => t.classList.toggle('active', t.getAttribute('data-tab') === tabName));
+      panes.forEach(p => p.classList.toggle('active', p.getAttribute('data-tab') === tabName));
+      if (titleEl) titleEl.textContent = titles[tabName] || '';
+      if (subEl)   subEl.textContent   = subs[tabName]   || '';
+    }
+
+    tabs.forEach(tab => tab.addEventListener('click', () => activate(tab.getAttribute('data-tab'))));
+    activate({{ default_tab|tojson }});
+  })();
+</script>

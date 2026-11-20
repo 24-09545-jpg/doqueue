@@ -1,0 +1,109 @@
+<style>
+  .contacts-shell {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 24px 0 8px;
+  }
+
+  .contacts-card {
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1),
+                0 4px 6px -2px rgba(0,0,0,0.05);
+    max-width: 720px;
+    width: 100%;
+    padding: 24px 28px 20px;
+  }
+
+  .contacts-title {
+    text-align: center;
+    font-size: 18px;
+    font-weight: 600;
+    color: #111827;
+    margin: 0 0 14px;
+  }
+
+  .contacts-intro {
+    font-size: 13px;
+    color: #374151;
+    margin: 0 0 18px;
+  }
+
+  .contacts-table-wrap {
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+  }
+
+  .contacts-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .contacts-table thead th {
+    background: #e5e7eb;
+    padding: 8px 10px;
+    text-align: left;
+    font-weight: 600;
+    color: #111827;
+    border-bottom: 1px solid #d1d5db;
+  }
+
+  .contacts-table thead th.icon-col {
+    width: 50%;
+    text-align: center;
+  }
+
+  .contacts-table thead .icon {
+    font-size: 16px;
+    display: inline-block;
+  }
+
+  .contacts-table tbody td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #e5e7eb;
+    color: #111827;
+  }
+
+  .contacts-table tbody tr:nth-child(odd) {
+    background: #f9fafb;
+  }
+
+  .contacts-table tbody tr:nth-child(even) {
+    background: #ffffff;
+  }
+</style>
+
+<div class="contacts-shell">
+  <div class="contacts-card">
+    <h2 class="contacts-title">{{ site.contacts_title or 'ICT Services Email Addresses' }}</h2>
+    <p class="contacts-intro">
+      {{ site.contacts_intro }}
+    </p>
+
+    <div class="contacts-table-wrap">
+      <table class="contacts-table">
+        <thead>
+          <tr>
+            <th class="icon-col">
+              <img src="{{ url_for('static', filename='img/icon/building.png') }}" alt="school" style="width:15px; height:15px;">
+            </th>
+            <th class="icon-col">
+              <img src="{{ url_for('static', filename='img/icon/email.png') }}" alt="email" style="width:15px; height:15px;">
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for name, email in contact_rows %}
+          <tr>
+            <td>{{ name }}</td>
+            <td>{{ email }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

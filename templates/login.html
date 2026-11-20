@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% block title %}Sign In | {{ portal_name or 'User Portal' }} | E-Sign Request Portal{% endblock %}
+{% block content %}
+<style>
+  /* Full-page gray background */
+  
+  body {
+    margin: 0;
+    background: #e5e7eb; /* soft gray */
+  }
+
+  .page-bg {
+    min-height: 100vh;
+    background: #e5e7eb;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;   /* was center */
+    padding: 0;                /* no extra space around */
+  }
+
+  /* Main white container that holds BOTH banner and login */
+  .portal-shell {
+    width: 100%;
+    max-width: 960px;
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    border-radius: 2px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh; 
+    margin: 0 auto; 
+  }
+
+  .portal-banner img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .portal-subheader {
+    text-align: center;
+    padding: 6px 16px;
+    border-top: 1px solid #e5e7eb;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 14px;
+    color: #374151;
+    background-color: #fafafa;
+  }
+
+  .login-outer {
+    padding: 30px 24px 40px;    
+    display: flex;
+    justify-content: center;
+  }
+
+  .login-card {
+    width: 100%;
+    max-width: 520px;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    background: #ffffff;
+    padding: 24px 26px 22px;              /* tighter card */
+  }
+
+  .login-card h2 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 18px;
+    color: #111827;
+  }
+
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  .form-group label {
+    display: block;
+    font-size: 13px;
+    margin-bottom: 4px;
+    color: #374151;
+  }
+
+  .form-group input {
+    width: 100%;
+    padding: 9px 10px;
+    border-radius: 3px;
+    border: 1px solid #cbd5e1;
+    font-size: 14px;
+    background: #f3f4ff;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .form-group input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
+    background: #ffffff;
+  }
+
+  .helper-text {
+    font-size: 11px;
+    color: #6b7280;
+    margin-top: 4px;
+  }
+
+  .submit-btn {
+    margin-top: 10px;
+    width: 180px;
+    padding: 9px 0;
+    border-radius: 999px;
+    border: none;
+    font-size: 14px;
+    font-weight: 300;
+    background: #16a34a;
+    color: #ffffff;
+    cursor: pointer;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+  }
+
+  .submit-btn:hover {
+    background: #f59e0b;
+    transform: translateY(-1px);
+  }
+
+  .submit-btn:active {
+    transform: translateY(0);
+    box-shadow: none;
+  }
+
+  .login-footer {
+    margin-top: 16px;
+    text-align: center;
+    font-size: 13px;
+    color: #6b7280;
+  }
+
+  .login-footer a {
+    color: #16a34a;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .login-footer a:hover {
+    text-decoration: underline;
+  }
+
+  @media (max-height: 700px) {
+    /* If the screen is really short, allow a bit of scroll instead of breaking */
+    .page-bg {
+      align-items: flex-start;
+      padding-top: 8px;
+    }
+  }
+</style>
+
+<div class="page-bg">
+  <div class="portal-shell">
+    <!-- Banner -->
+    <div class="portal-banner">
+      <img src="{{ url_for('static', filename='img/bsu-banner.jpg') }}" alt="E-Sign Request Portal Banner">
+    </div>
+
+    <div class="portal-subheader">
+      E-Sign Request Portal Login{% if portal_name %} &mdash; {{ portal_name }}{% endif %}
+    </div>
+
+    <div class="login-outer">
+      <div class="login-card">
+        <h2>Please Login</h2>
+
+        {% if site.login_notice %}
+          <div class="helper-text" style="margin:-8px 0 14px; font-size:12px; color:#374151; white-space:pre-line;">{{ site.login_notice }}</div>
+        {% endif %}
+
+        <form method="post" action="{{ login_action or url_for('login') }}">
+          <div class="form-group">
+            <label for="email">Email *</label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              required
+              placeholder="your.id@g.batstate-u.edu.ph">
+          </div>
+
+          <div class="form-group">
+            <label for="password">Password *</label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              required
+              placeholder="Enter your password">
+          </div>
+
+          <button type="submit" class="submit-btn">Sign In</button>
+        </form>
+
+        {% if not portal_role or portal_role == 'user' %}
+        <div class="login-footer">
+          Don't have an account?
+          <a href="{{ url_for('register') }}">Click here</a>
+        </div>
+        {% endif %}
+        <div class="login-footer" style="font-size:12px; margin-top:10px;">
+          {% if portal_role != 'user' %}<a href="{{ url_for('login') }}">User Portal</a>{% endif %}
+          {% if portal_role != 'office' %}{% if portal_role != 'user' %} &middot; {% endif %}<a href="{{ url_for('admin.login') }}">Admin Portal (Signatory Offices)</a>{% endif %}
+          {% if portal_role != 'moderator' %} &middot; <a href="{{ url_for('moderator.login') }}">Moderator Portal</a>{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,339 @@
+{# templates/partials/upload_document.html #}
+{% set f = form or {} %}
+{% set e = errors or {} %}
+
+<style>
+  .upload-page-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  .upload-card {
+    width: 100%;
+    max-width: 860px;
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+    padding: 20px 22px 22px;
+    display: block;
+    gap: 18px;
+  }
+
+  .upload-left {
+    padding: 6px 10px 0;
+  }
+
+  .upload-title-main {
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 4px;
+  }
+
+  .upload-sub {
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 14px;
+  }
+
+  .form-row {
+    margin-bottom: 10px;
+  }
+
+  .form-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 4px;
+    display: inline-block;
+  }
+
+  .form-label span.req {
+    color: #dc2626;
+    margin-left: 3px;
+  }
+
+  .form-input, .form-textarea {
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid #d1d5db;
+    padding: 8px 10px;
+    font-size: 14px;
+    outline: none;
+    background: #f9fafb;
+    transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+  }
+
+  .form-input:focus, .form-textarea:focus {
+    border-color: #16a34a;
+    box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.2);
+    background: #ffffff;
+  }
+
+  .form-textarea {
+    resize: vertical;
+    min-height: 70px;
+  }
+
+  .field-error {
+    margin-top: 3px;
+    font-size: 12px;
+    color: #b91c1c;
+  }
+
+  .hint {
+    font-size: 11px;
+    color: #9ca3af;
+    margin-top: 2px;
+  }
+
+  /* signer chips */
+  .signer-wrapper {
+    border-radius: 10px;
+    border: 1px solid #d1d5db;
+    background: #f9fafb;
+    padding: 6px 8px 8px;
+  }
+
+  .emails-list {
+    min-height: 30px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+
+  .email-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: #ecfeff;
+    border: 1px solid #bae6fd;
+    font-size: 12px;
+    color: #0369a1;
+  }
+
+  .route-chip input { margin: 0; accent-color: #16a34a; }
+  .route-chip.off { opacity: 0.45; }
+
+  .email-chip button {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 11px;
+    color: #0f172a;
+    padding: 0;
+    line-height: 1;
+  }
+
+  .signer-input-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .signer-input-row .form-input {
+    flex: 1;
+    background: #ffffff;
+  }
+
+  .add-email-btn {
+    border-radius: 999px;
+    border: 1px solid #16a34a;
+    background: #16a34a;
+    color: #ffffff;
+    width: 30px;
+    height: 30px;
+    font-size: 18px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .add-email-btn:hover {
+    background: #15803d;
+  }
+
+  .upload-actions {
+    margin-top: 12px;
+  }
+
+  /* PDF preview */
+  /* Preview removed: form takes full width */
+
+  @media (max-width: 920px) {
+    .upload-card {
+      grid-template-columns: 1fr;
+    }
+    .upload-left {
+      border-right: none;
+      border-bottom: 1px solid #e5e7eb;
+      padding-right: 0;
+      padding-bottom: 12px;
+    }
+    .upload-right {
+      padding-left: 0;
+      padding-top: 8px;
+    }
+  }
+</style>
+
+<div class="upload-page-wrapper">
+  <div class="upload-card">
+    <!-- LEFT: FORM -->
+    <div class="upload-left">
+      <div class="upload-title-main">Request Signature</div>
+      <div class="upload-sub">
+        {{ site.submission_instructions or 'Upload your letter as a PDF. It will be routed to the required signatory offices.' }}
+      </div>
+      {% if e.general %}<div class="field-error" style="margin-bottom:10px;">{{ e.general }}</div>{% endif %}
+
+      <form method="post" action="{{ url_for('upload_document') }}" enctype="multipart/form-data" novalidate>
+        {# priority removed visually; keep hidden default so backend stays happy #}
+        <input type="hidden" name="priority" value="low">
+
+        <!-- Title -->
+        <div class="form-row">
+          <label for="title" class="form-label">
+            Document Title <span class="req">*</span>
+          </label>
+          <input
+            type="text"
+            id="title"
+            name="title"
+            class="form-input"
+            placeholder="e.g. Clearance Form – 2nd Semester"
+            value="{{ f.title|default('') }}"
+          >
+          {% if e.title %}
+            <div class="field-error">{{ e.title }}</div>
+          {% endif %}
+        </div>
+
+        <!-- Signing route (managed by the DSA; replaces manual signer emails) -->
+        <div class="form-row">
+          <label class="form-label">Signing Route <span class="req">*</span></label>
+          <div class="signer-wrapper">
+            {% if hierarchy %}
+              {% set chosen = (f.office_ids or []) | map('int') | list %}
+              <div class="emails-list" style="margin-bottom:0;" id="route-list">
+                {% for o in hierarchy %}
+                  <label class="email-chip route-chip" style="cursor:pointer;">
+                    <input type="checkbox" name="office_ids" value="{{ o.id }}"
+                           {% if not chosen or o.id in chosen %}checked{% endif %}>
+                    <span>{{ o.name }}</span>
+                  </label>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="field-error" style="margin:0;">No signing hierarchy is configured yet. Please contact the DSA.</div>
+            {% endif %}
+          </div>
+          {% if e.office_ids %}
+            <div class="field-error">{{ e.office_ids }}</div>
+          {% else %}
+            <div class="hint">
+              Tick the offices that need to sign this letter. They sign in the order shown; the next office can only open it after the previous one signs.
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Expiry date -->
+        <div class="form-row">
+          <label for="expiry_date" class="form-label">
+            Expiry Date <span class="req">*</span>
+          </label>
+          <input
+            type="date"
+            id="expiry_date"
+            name="expiry_date"
+            class="form-input"
+            value="{{ f.expiry_date|default('') }}"
+          >
+          {% if e.expiry_date %}
+            <div class="field-error">{{ e.expiry_date }}</div>
+          {% else %}
+            <div class="hint">
+              After this date, signers will no longer be able to approve the document.
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Note -->
+        <div class="form-row">
+          <label for="note" class="form-label">
+            Note / Instructions <span class="req" style="color:#9ca3af;">(optional)</span>
+          </label>
+          <textarea
+            id="note"
+            name="note"
+            class="form-textarea"
+            placeholder="Add a short message for your signers…"
+          >{{ f.note|default('') }}</textarea>
+        </div>
+
+        <!-- File -->
+        <div class="form-row">
+          <label for="document" class="form-label">
+            PDF File <span class="req">*</span>
+          </label>
+          <input
+            type="file"
+            id="document"
+            name="document"
+            class="form-input"
+            accept="application/pdf"
+          >
+          {% if e.document %}
+            <div class="field-error">{{ e.document }}</div>
+          {% else %}
+            <div class="hint">
+              Only PDF files are supported for signature requests (max 25 MB).
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Actions -->
+        <div class="upload-actions">
+          <button type="submit" class="btn btn-primary"{% if not hierarchy %} disabled{% endif %}>Upload &amp; Send for Signature</button>
+          <button type="reset" class="btn btn-secondary">Reset</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- RIGHT pane removed — form occupies full width -->
+  </div>
+</div>
+
+<script>
+(function() {
+  const formEl = document.querySelector('form[action="{{ url_for('upload_document') }}"]');
+  if (!formEl) return;
+  const routeBoxes = formEl.querySelectorAll('input[name="office_ids"]');
+  function syncRoute() {
+    routeBoxes.forEach(cb => cb.closest('.route-chip').classList.toggle('off', !cb.checked));
+  }
+  routeBoxes.forEach(cb => cb.addEventListener('change', syncRoute));
+  syncRoute();
+  formEl.addEventListener('submit', function (e) {
+    if (routeBoxes.length && !Array.from(routeBoxes).some(cb => cb.checked)) {
+      e.preventDefault();
+      if (window.showFlash) showFlash('error', 'Please choose at least one signatory office.');
+      return;
+    }
+    const titleEl = document.getElementById('title');
+    const expiryEl = document.getElementById('expiry_date');
+    const fileEl = document.getElementById('document');
+    if (!titleEl || !titleEl.value.trim()) { e.preventDefault(); if (titleEl) titleEl.focus(); return; }
+    if (!expiryEl || !expiryEl.value.trim()) { e.preventDefault(); if (expiryEl) expiryEl.focus(); return; }
+    if (!fileEl || !fileEl.files || fileEl.files.length === 0) { e.preventDefault(); if (fileEl) fileEl.focus(); return; }
+  });
+})();
+</script>

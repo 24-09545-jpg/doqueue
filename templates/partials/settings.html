@@ -1,0 +1,412 @@
+{# templates/partials/settings.html #}
+
+<style>
+  .settings-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .settings-panel .btn.btn-primary {
+    border: none;
+    border-radius: 999px;
+    padding: 8px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    background: #16a34a;
+    color: #ffffff;
+    cursor: pointer;
+    transition: background 0.12s ease, transform 0.08s ease, box-shadow 0.12s ease;
+    border-color: #16a34a;
+  }
+
+  .settings-panel .btn.btn-primary:hover {
+    background: #15803d;
+    border-color: #15803d;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 16px rgba(22, 163, 74, 0.25);
+  }
+
+  /* use flex instead of grid so right panel height is independent */
+  .settings-layout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .settings-panel {
+    background: #ffffff;
+    border-radius: 14px;
+    border: 1px solid #e5e7eb;
+    box-shadow: var(--shadow-sm, 0 8px 18px rgba(15,23,42,0.08));
+    padding: 14px 16px 16px;
+  }
+
+  .settings-panel--signature {
+    flex: 1.2 1 320px;
+  }
+
+  .settings-panel--account {
+    flex: 1 1 260px;
+    align-self: flex-start; /* do NOT stretch with the other panel */
+  }
+
+  .settings-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+  }
+
+  .settings-panel-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .settings-panel-sub {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 2px;
+  }
+
+  .settings-panel-body {
+    font-size: 13px;
+    color: #374151;
+  }
+
+  .settings-form-group {
+    margin-bottom: 12px;
+  }
+
+  .settings-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 4px;
+  }
+
+  .settings-input {
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid #d1d5db;
+    padding: 7px 9px;
+    font-size: 13px;
+    background: #f9fafb;
+  }
+
+  .settings-input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 1px rgba(37,99,235,0.25);
+    background: #ffffff;
+  }
+
+  .settings-signature-preview {
+    margin-top: 8px;
+    padding: 8px;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    background: #f9fafb;
+    display: inline-flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  /* fixed-size box so preview is always same size */
+  .settings-signature-frame {
+    width: 260px;
+    height: 90px;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .settings-signature-frame img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    display: none; /* hidden until we have a real image */
+  }
+
+  .settings-signature-placeholder {
+    font-size: 12px;
+    color: #9ca3af;
+  }
+
+  .settings-meta-line {
+    font-size: 13px;
+    margin-bottom: 6px;
+  }
+
+  .settings-meta-label {
+    font-weight: 600;
+    color: #374151;
+  }
+
+  .settings-meta-value {
+    color: #111827;
+  }
+
+  .settings-note {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 10px;
+  }
+
+  .settings-actions {
+    margin-top: 8px;
+  }
+
+
+  .hidden {
+    display: none !important;
+  }
+
+  @media (max-width: 900px) {
+    .settings-layout {
+      flex-direction: column;
+    }
+  }
+</style>
+
+<div class="settings-wrap">
+  <div class="settings-layout">
+    <!-- LEFT: Signature settings -->
+    {% if user.role != 'moderator' %}
+    <section class="settings-panel settings-panel--signature">
+      <div class="settings-panel-header">
+        <div>
+          <div class="settings-panel-title">Digital Signature</div>
+          <div class="settings-panel-sub">
+            Upload or replace your e-signature image (PNG recommended; transparent backgrounds are kept so nothing covers the document).
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-panel-body">
+        <form method="post"
+              id="signature-form"
+              enctype="multipart/form-data"
+              action="{{ url_for('upload_signature') }}">
+          <div class="settings-form-group">
+            <label for="signature" class="settings-label">
+              Signature image (PNG)
+            </label>
+            <input type="file"
+                   class="settings-input"
+                   name="signature"
+                   id="signature"
+                   accept="image/png,image/jpeg">
+          </div>
+
+          <div id="signature-preview-wrap"
+               class="settings-signature-preview{% if not user or not user.signature_filename %} hidden{% endif %}">
+            <div id="signature-preview-label" style="font-size:12px; color:#6b7280;">
+              {% if user and user.signature_filename %}
+                Current signature:
+              {% else %}
+                New signature preview:
+              {% endif %}
+            </div>
+            <div class="settings-signature-frame">
+              <img id="signature-preview-img"
+                   {% if user and user.signature_filename %}
+                     src="{{ url_for('uploaded_file', filename=user.signature_filename) }}"
+                     style="display:block;"
+                   {% endif %}
+                   alt="Signature preview">
+              <span id="signature-preview-placeholder"
+                    class="settings-signature-placeholder{% if user and user.signature_filename %} hidden{% endif %}">
+                {% if user and user.signature_filename %}
+                  <!-- hidden when we already have an image -->
+                {% else %}
+                  No signature selected yet
+                {% endif %}
+              </span>
+            </div>
+          </div>
+
+          <div class="settings-form-group" style="font-size:12px; color:#4b5563;">
+            <label>
+              <input type="checkbox" name="remove_background" value="1" checked>
+              Make a white background transparent (recommended for scanned or photographed signatures)
+            </label>
+          </div>
+
+          {% if not user or not user.signature_filename %}
+            <div class="settings-note" id="signature-empty-note">
+              You don’t have a signature uploaded yet. This is required to approve &amp; sign documents.
+            </div>
+          {% endif %}
+
+          <div class="settings-actions">
+            <button type="submit" class="btn btn-primary">
+              {% if user and user.signature_filename %}
+                Update Signature
+              {% else %}
+                Save Signature
+              {% endif %}
+            </button>
+          </div>
+
+          <!-- success message (AJAX) -->
+          <div id="signature-save-msg"
+               style="display:none; margin-top:6px; font-size:12px; color:#16a34a;">
+            Signature updated successfully.
+          </div>
+        </form>
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- RIGHT: Account info -->
+    <section class="settings-panel settings-panel--account">
+      <div class="settings-panel-header">
+        <div>
+          <div class="settings-panel-title">Account Info</div>
+          <div class="settings-panel-sub">
+            Your registered BatStateU account details.
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-panel-body">
+        <div class="settings-meta-line">
+          <span class="settings-meta-label">Name:</span>
+          <span class="settings-meta-value">{{ user.name }}</span>
+        </div>
+        <div class="settings-meta-line">
+          <span class="settings-meta-label">Email:</span>
+          <span class="settings-meta-value">{{ user.email }}</span>
+        </div>
+        {% if user.organization_name %}
+        <div class="settings-meta-line">
+          <span class="settings-meta-label">Organization:</span>
+          <span class="settings-meta-value">{{ user.organization_name }}</span>
+        </div>
+        {% endif %}
+        {% if user.office_name %}
+        <div class="settings-meta-line">
+          <span class="settings-meta-label">Office:</span>
+          <span class="settings-meta-value">{{ user.office_name }}{% if user.position %} &middot; {{ user.position }}{% endif %}</span>
+        </div>
+        {% endif %}
+
+        <div class="settings-note">
+          If you need to update your account information, please contact the system administrator.
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+  (function() {
+    const input = document.getElementById('signature');
+    if (!input) return;
+
+    const wrap        = document.getElementById('signature-preview-wrap');
+    const img         = document.getElementById('signature-preview-img');
+    const label       = document.getElementById('signature-preview-label');
+    const placeholder = document.getElementById('signature-preview-placeholder');
+    const emptyNote   = document.getElementById('signature-empty-note');
+
+    input.addEventListener('change', function() {
+      const file = this.files && this.files[0];
+      if (!file) return;
+
+      // enforce PNG in the browser too
+      if (!file.type || !(file.type.includes('png') || file.type.includes('jpeg'))) {
+        alert('Please select a PNG (or JPG) file.');
+        this.value = '';
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        if (img) {
+          img.src = e.target.result;
+          img.style.display = 'block';
+        }
+        if (placeholder) {
+          placeholder.classList.add('hidden');
+        }
+        if (wrap) {
+          wrap.classList.remove('hidden');
+        }
+        if (label) {
+          label.textContent = 'New signature preview:';
+        }
+        if (emptyNote) {
+          emptyNote.style.display = 'none';
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  })();
+</script>
+
+<script>
+  // AJAX-submit the signature form so we don't leave the Settings tab
+  (function () {
+    const form = document.getElementById('signature-form');
+    if (!form) return;
+
+    const msgBox = document.getElementById('signature-save-msg');
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();   // stop full-page POST + redirect
+
+      const formData = new FormData(form);
+
+      fetch(form.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.ok) {
+            // Success
+            if (window.showFlash) {
+              window.showFlash('success', data.message || 'Signature saved successfully.');
+            } else if (msgBox) {
+              msgBox.style.display = 'block';
+              msgBox.textContent = data.message || 'Signature saved successfully.';
+            } else {
+              alert(data.message || 'Signature saved successfully.');
+            }
+            // Reload settings partial to show updated signature
+            setTimeout(() => {
+              const settingsLink = document.querySelector('.side-link[data-page="settings"]');
+              if (settingsLink) settingsLink.click();
+            }, 1000);
+          } else {
+            // Error from server
+            if (window.showFlash) {
+              window.showFlash('error', data.error || 'Failed to save signature.');
+            } else {
+              alert(data.error || 'Failed to save signature.');
+            }
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          if (window.showFlash) {
+            window.showFlash('error', 'There was a problem saving your signature.');
+          } else {
+            alert('There was a problem saving your signature.');
+          }
+        });
+    });
+  })();
+</script>

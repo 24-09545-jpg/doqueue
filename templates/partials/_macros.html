@@ -1,0 +1,47 @@
+{% macro status_pill(status, label=None) -%}
+  {%- set cls = {
+      'pending': 'status-pending',
+      'under_review': 'status-viewed',
+      'waiting_signature': 'status-ongoing',
+      'processing': 'status-ongoing',
+      'approved': 'status-completed-pill',
+      'fully_signed': 'status-completed-pill',
+      'disapproved': 'status-declined-pill',
+      'returned': 'status-returned-pill',
+      'expired': 'status-expired-pill',
+      'withdrawn': 'status-muted-pill',
+      'queued': 'status-pending',
+      'awaiting_signature': 'status-ongoing',
+      'completed': 'status-completed-pill',
+      'waiting': 'status-muted-pill',
+      'cancelled': 'status-muted-pill',
+      'available': 'status-completed-pill',
+      'busy': 'status-ongoing',
+      'in_meeting': 'status-ongoing',
+      'on_leave': 'status-declined-pill',
+      'out_of_office': 'status-expired-pill',
+      'unavailable': 'status-declined-pill',
+      'Available': 'status-completed-pill',
+      'Unavailable': 'status-declined-pill',
+      'Pending': 'status-pending',
+  }.get(status, 'status-pending') -%}
+  <span class="status-pill {{ cls }}">{{ label or status_label(status) }}</span>
+{%- endmacro %}
+
+{% macro step_pill(status) -%}
+  {{ status_pill(status, STEP_STATUS_LABELS.get(status, ('', status))[1]) }}
+{%- endmacro %}
+
+{% macro queue_pill(status) -%}
+  {{ status_pill(status, STEP_STATUS_LABELS.get(status, (status, ''))[0]) }}
+{%- endmacro %}
+
+{% macro progress_bar(p) -%}
+  <div class="trk">
+    <div class="trk-bar"><div class="trk-fill{% if p.status in ('returned','disapproved','expired') %} stopped{% endif %}" style="width: {{ p.percent }}%;"></div></div>
+    <div class="trk-meta">
+      <span>{{ p.signed }} of {{ p.total }} signed{% if p.pending and p.status not in ('returned','disapproved','expired','fully_signed') %} &middot; {{ p.pending }} pending{% endif %}</span>
+      <span><strong>{{ p.percent }}%</strong></span>
+    </div>
+  </div>
+{%- endmacro %}

@@ -1,0 +1,668 @@
+{# templates/partials/document_view.html – letter details / review (all portals) #}
+{% import "partials/_macros.html" as m with context %}
+
+<style>
+  /* Font just for this modal (global should still be set in base.html) */
+  .review-backdrop,
+  .review-backdrop * {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  .review-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.35);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 40;
+  }
+
+  .review-modal {
+    width: 100%;
+    max-width: 980px;
+    max-height: 90vh;
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 24px 50px rgba(15, 23, 42, 0.35);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .review-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f9fafb;
+  }
+
+  .review-title-block {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .review-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #111827;
+  }
+
+  .review-meta {
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+  .review-status-pill {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .review-status-pill.completed {
+    background: #dcfce7;
+    color: #166534;
+  }
+  .review-status-pill.in_progress {
+    background: #eef2ff;
+    color: #3730a3;
+  }
+  .review-status-pill.declined {
+    background: #fee2e2;
+    color: #b91c1c;
+  }
+  .review-status-pill.expired {
+    background: #fef3c7;
+    color: #92400e;
+  }
+  .review-status-pill.default {
+    background: #e5e7eb;
+    color: #374151;
+  }
+
+  .review-close-btn {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 20px;
+    line-height: 1;
+    color: #6b7280;
+    padding: 2px 4px;
+  }
+
+  .review-body {
+    display: grid;
+    grid-template-columns: 0.9fr 1.3fr;
+    gap: 0;
+    padding: 14px 18px 16px;
+    overflow: hidden;
+  }
+
+  .review-left {
+    padding-right: 14px;
+    border-right: 1px solid #e5e7eb;
+    overflow-y: auto;
+    max-height: 64vh;
+  }
+
+  .review-right {
+    padding-left: 14px;
+    overflow: hidden;
+    max-height: 64vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .review-section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 4px;
+  }
+
+  .review-text {
+    font-size: 13px;
+    color: #4b5563;
+    margin-bottom: 8px;
+  }
+
+  .review-signers-list {
+    font-size: 13px;
+    color: #4b5563;
+    margin: 0 0 10px 16px;
+  }
+
+  .review-signers-list li {
+    margin-bottom: 2px;
+  }
+
+  .review-expired {
+    font-size: 13px;
+    color: #b91c1c;
+    margin-top: 4px;
+  }
+
+  /* PDF + draggable signature */
+  .review-iframe-wrap {
+    position: relative;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    overflow: hidden; /* revert: native viewer with zoom/toolbar */
+    background: #111827;
+    flex: 1;
+  }
+  .review-iframe-wrap iframe {
+    width: 100%;
+    height: 100%;
+    min-height: 380px;
+    border: none;
+    background: #111827;
+  }
+
+  .review-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none; /* only signature is draggable */
+  }
+
+  .review-signature-img {
+    position: absolute;
+    max-width: 180px;
+    max-height: 80px;
+    cursor: grab;
+    pointer-events: auto;
+    background: transparent;
+  }
+
+  .review-signature-img:active {
+    cursor: grabbing;
+  }
+
+  .review-actions {
+    margin-top: 10px;
+  }
+
+  .review-actions-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .btn-approve {
+    border: none;
+    border-radius: 999px;
+    padding: 8px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    background: #16a34a;
+    color: #ffffff;
+    cursor: pointer;
+    transition: background 0.12s ease, transform 0.08s ease, box-shadow 0.12s ease;
+  }
+  .btn-approve:hover {
+    background: #15803d;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 16px rgba(22, 163, 74, 0.25);
+  }
+
+  .btn-decline {
+    border-radius: 999px;
+    border: 1px solid #d1d5db;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    background: #ffffff;
+    cursor: pointer;
+    color: #b91c1c;
+    transition: background 0.12s ease, border-color 0.12s ease;
+  }
+  .btn-decline:hover {
+    background: #fef2f2;
+    border-color: #fecaca;
+  }
+
+  .btn-link-back {
+    font-size: 12px;
+    color: #6b7280;
+    cursor: pointer;
+    text-decoration: underline;
+    background: none;
+    border: none;
+    padding: 0;
+  }
+
+  .decline-textarea {
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid #d1d5db;
+    padding: 6px 8px;
+    font-size: 13px;
+    resize: vertical;
+    min-height: 70px;
+  }
+
+  .hidden {
+    display: none !important;
+  }
+
+  @media (max-width: 900px) {
+    .review-modal {
+      max-width: 96%;
+    }
+    .review-body {
+      grid-template-columns: 1fr;
+    }
+    .review-left {
+      border-right: none;
+      border-bottom: 1px solid #e5e7eb;
+      padding-right: 0;
+      padding-bottom: 10px;
+      max-height: none;
+    }
+    .review-right {
+      padding-left: 0;
+      padding-top: 10px;
+      max-height: none;
+    }
+  }
+</style>
+<style>
+  .review-left { max-height: 66vh; }
+  .review-right { max-height: 66vh; min-height: 420px; }
+  .trk-steps { list-style: none; margin: 6px 0 10px; padding: 0; font-size: 12.5px; }
+  .trk-steps li { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; border-bottom: 1px dashed #e5e7eb; }
+  .trk-steps li:last-child { border-bottom: none; }
+  .trk-num { flex: 0 0 22px; height: 22px; border-radius: 999px; background: #f3f4f6; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: #374151; }
+  .trk-num.done { background: #dcfce7; border-color: #86efac; color: #166534; }
+  .trk-num.now { background: #fef9c3; border-color: #fde68a; color: #92400e; }
+  .trk-num.stop { background: #fee2e2; border-color: #fecaca; color: #b91c1c; }
+  .trk-step-main { flex: 1; }
+  .trk-step-name { font-weight: 600; color: #111827; }
+  .trk-step-meta { font-size: 11px; color: #6b7280; }
+  .cmt-list { list-style: none; margin: 4px 0 10px; padding: 0; }
+  .cmt { border: 1px solid #e5e7eb; border-radius: 10px; padding: 7px 9px; margin-bottom: 6px; background: #f9fafb; font-size: 12.5px; color: #374151; }
+  .cmt.returned, .cmt.disapproved { background: #fef2f2; border-color: #fecaca; }
+  .cmt.approval { background: #f0fdf4; border-color: #bbf7d0; }
+  .cmt.resubmission { background: #eff6ff; border-color: #bfdbfe; }
+  .cmt-head { font-size: 11px; color: #6b7280; margin-bottom: 2px; }
+  .cmt-head strong { color: #111827; }
+  .cmt-body { white-space: pre-line; }
+  .review-subtle { font-size: 11px; color: #6b7280; }
+  .review-field { width: 100%; border-radius: 10px; border: 1px solid #d1d5db; padding: 6px 8px; font-size: 13px; margin-bottom: 6px; background: #fff; font-family: inherit; }
+  .btn-neutral { border-radius: 999px; border: 1px solid #d1d5db; padding: 8px 16px; font-size: 13px; font-weight: 500; background: #ffffff; cursor: pointer; color: #374151; }
+  .btn-neutral:hover { background: #f3f4f6; }
+  .btn-warn { border-radius: 999px; border: 1px solid #fed7aa; padding: 8px 16px; font-size: 13px; font-weight: 500; background: #ffffff; cursor: pointer; color: #c2410c; }
+  .btn-warn:hover { background: #fff7ed; }
+  .btn-approve:disabled, .btn-decline:disabled, .btn-warn:disabled, .btn-neutral:disabled { opacity: .6; cursor: not-allowed; }
+  .review-block { margin-top: 12px; }
+  .review-tracking { font-size: 12px; font-weight: 600; color: #166534; }
+  .review-placer { flex: 1; border-radius: 10px; border: 1px solid #e5e7eb; overflow: hidden; }
+  .act-row { padding: 4px 0; font-size: 12px; border-bottom: 1px dashed #e5e7eb; }
+  .act-row .small { color: #6b7280; }
+</style>
+
+{% set s = doc.status %}
+<div class="review-backdrop" data-doc-modal-backdrop>
+  <div class="review-modal" data-letter-id="{{ doc.id }}">
+    <div class="review-header">
+      <div class="review-title-block">
+        <div class="review-title">{% if access == 'office' and can_act %}Review Document{% else %}Letter Details{% endif %}</div>
+        <div class="review-meta">
+          {{ doc.title }}<br>
+          Organization: {{ doc.organization_name }}
+          {% if doc.expiry_date %}&nbsp;•&nbsp; Expires: {{ doc.expiry_date|dt(False) }}{% endif %}
+          {% if doc.tracking_number %}<br><span class="review-tracking">Tracking No. {{ doc.tracking_number }}</span>{% endif %}
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        {{ m.status_pill(s) }}
+        <button class="review-close-btn" type="button" data-doc-modal-close>×</button>
+      </div>
+    </div>
+
+    <div class="review-body">
+      <!-- LEFT: details, tracker, remarks, actions -->
+      <div class="review-left">
+        <div class="review-section-title">Details</div>
+        <div class="review-text"><strong>Note:</strong> {{ doc.note if doc.note else '-' }}</div>
+        <div class="review-text">
+          <strong>Submitted by:</strong> {{ doc.submitter_name }} ({{ doc.owner_email }})<br>
+          <strong>Last submitted:</strong> {{ doc.submitted_at|dt }}
+          {% if doc.current_cycle > 1 %}<br><strong>Revision:</strong> resubmitted {{ doc.current_cycle - 1 }} time{{ 's' if doc.current_cycle > 2 }}{% endif %}
+        </div>
+
+        <!-- Progress tracker -->
+        <div class="review-section-title" style="margin-top:10px;">Signing Progress</div>
+        {{ m.progress_bar(progress) }}
+        <ol class="trk-steps">
+          {% for st in steps %}
+            {% set cls = 'done' if st.status == 'completed' else ('now' if st.status in ('queued','processing','awaiting_signature') else ('stop' if st.status in ('returned','disapproved') else '')) %}
+            <li>
+              <span class="trk-num {{ cls }}">{{ st.step_order }}</span>
+              <div class="trk-step-main">
+                <div class="trk-step-name">{{ st.office_name }}</div>
+                <div class="trk-step-meta">
+                  {% if st.status == 'completed' %}Signed by {{ st.acted_by_name }} · {{ st.acted_at|dt }}
+                  {% elif st.status in ('returned','disapproved') %}{{ st.tracker_label }} by {{ st.acted_by_name }} · {{ st.acted_at|dt }}
+                  {% endif %}
+                </div>
+              </div>
+              {{ m.step_pill(st.status) }}
+            </li>
+          {% endfor %}
+        </ol>
+
+        {% if history_cycles %}
+          <details class="review-block">
+            <summary class="review-section-title" style="cursor:pointer;">Previous routing attempts ({{ history_cycles|length }})</summary>
+            {% for hc in history_cycles %}
+              <div class="review-subtle" style="margin-top:6px;"><strong>Attempt {{ hc.cycle }}</strong></div>
+              <ol class="trk-steps">
+                {% for st in hc.steps %}
+                  <li><span class="trk-num">{{ st.step_order }}</span>
+                    <div class="trk-step-main"><div class="trk-step-name">{{ st.office_name }}</div>
+                      <div class="trk-step-meta">{% if st.acted_at %}{{ st.acted_by_name }} · {{ st.acted_at|dt }}{% endif %}</div></div>
+                    {{ m.step_pill(st.status) }}</li>
+                {% endfor %}
+              </ol>
+            {% endfor %}
+          </details>
+        {% endif %}
+
+        <!-- Remarks -->
+        <div class="review-section-title" style="margin-top:10px;">Comments &amp; Remarks</div>
+        {% if comments %}
+          <ul class="cmt-list">
+            {% for c in comments %}
+              <li class="cmt {{ c.kind }}">
+                <div class="cmt-head">
+                  <strong>{{ c.author_name }}</strong>{% if c.office_name %} · {{ c.office_name }}{% endif %}
+                  · {{ c.created_at|dt }}
+                  {% if c.kind != 'comment' %}· <em>{{ {'approval':'Approval','returned':'Returned for Revision','disapproved':'Disapproval','resubmission':'Resubmission note'}.get(c.kind, c.kind) }}</em>{% endif %}
+                  {% if c.cycle != doc.current_cycle %}· <span class="review-subtle">attempt {{ c.cycle }}</span>{% endif %}
+                </div>
+                <div class="cmt-body">{{ c.body }}</div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="review-text review-subtle">No comments yet.</div>
+        {% endif %}
+
+        {# ---------------- OFFICE: decision actions ---------------- #}
+        {% if can_act %}
+          <div class="review-section-title" style="margin-top:12px;">Actions</div>
+
+          <div class="review-actions" data-step="1">
+            <textarea class="decline-textarea" id="review-remarks"
+                      placeholder="Comments / remarks for the organization (required when returning or disapproving)…"></textarea>
+            <div class="review-actions-buttons">
+              {% if can_sign %}
+                <button type="button" class="btn-approve js-approve-start">Approve &amp; Sign</button>
+              {% else %}
+                <button type="button" class="btn-approve js-decision" data-action="endorse">Approve</button>
+              {% endif %}
+              <button type="button" class="btn-warn js-decision" data-action="return">Return for Revision</button>
+              <button type="button" class="btn-decline js-decision" data-action="disapprove">Disapprove</button>
+              <button type="button" class="btn-neutral js-comment">Add Remark Only</button>
+            </div>
+            {% if not can_sign %}
+              <div class="review-subtle" style="margin-top:6px;">
+                Only your office's designated signatory ({{ office.signatory_name }}) can apply the signature.
+                "Approve" forwards it to them as <em>Waiting for Signature</em>.
+              </div>
+            {% elif not has_signature %}
+              <div class="review-expired">You have not uploaded a signature yet. Go to Settings first.</div>
+            {% endif %}
+          </div>
+
+          <div class="review-actions" data-step="2" style="display:none;">
+            <div class="review-section-title" style="margin-top:4px;">Place your signature</div>
+            <div class="review-text">
+              Drag your signature on the preview to where it should appear; drag a corner to resize it.
+              Use the arrows to choose the page.
+            </div>
+            <div style="margin-top:6px; font-size:12px;">
+              <label><input type="radio" name="apply_to" value="one" checked> Apply to the page shown only</label><br>
+              <label><input type="radio" name="apply_to" value="all"> Apply to all pages (same position)</label>
+            </div>
+            <div class="review-actions-buttons" style="margin-top:10px;">
+              <button type="button" class="btn-approve js-apply-signature">Apply Signature</button>
+              <button type="button" class="btn-decline js-cancel-placement">Cancel</button>
+            </div>
+          </div>
+        {% elif access == 'office' %}
+          <div class="review-text review-subtle" style="margin-top:12px;">
+            This letter is no longer waiting for your office's action.
+          </div>
+        {% endif %}
+
+        {# ---------------- ORGANIZATION: download / resubmit / versions ---------------- #}
+        {% if access == 'owner' %}
+          {% if s == 'fully_signed' %}
+            <div class="review-block">
+              <a class="btn-approve" style="text-decoration:none; display:inline-block;"
+                 href="{{ url_for('document_signed_download', doc_id=doc.id) }}">Download Signed PDF ({{ doc.tracking_number }})</a>
+            </div>
+          {% endif %}
+
+          {% if can_resubmit %}
+            <div class="review-block">
+              <div class="review-section-title">Revise &amp; Resubmit</div>
+              <div class="review-subtle" style="margin-bottom:6px;">
+                Resubmitting restarts the signing process from the first office. Previous versions, remarks and history are kept.
+              </div>
+              <form class="js-resubmit-form" method="post" enctype="multipart/form-data"
+                    action="{{ url_for('letter_resubmit', letter_id=doc.id) }}">
+                <input class="review-field" type="text" name="title" value="{{ doc.title }}" placeholder="Title" required>
+                <textarea class="review-field" name="note" rows="2" placeholder="Note / instructions">{{ doc.note }}</textarea>
+                <label class="review-subtle">Expiry date</label>
+                <input class="review-field" type="date" name="expiry_date" min="{{ today }}"
+                       value="{{ doc.expiry_date if doc.expiry_date and doc.expiry_date >= today else '' }}" required>
+                <label class="review-subtle">Revised PDF (optional – leave empty to keep the current file)</label>
+                <input class="review-field" type="file" name="document" accept="application/pdf">
+                <textarea class="review-field" name="remarks" rows="2" placeholder="What did you change? (shown to the signatories)"></textarea>
+                <button type="submit" class="btn-approve">Resubmit Letter</button>
+              </form>
+            </div>
+          {% endif %}
+
+          {% if s not in ('fully_signed', 'withdrawn') %}
+            <div class="review-block">
+              <div class="review-section-title">Delete Request</div>
+              <div class="review-subtle" style="margin-bottom:6px;">
+                Cancels this signing request. It is removed from your dashboard and from the signatories' queues.
+              </div>
+              <button type="button" class="btn-decline js-delete-request"
+                      data-url="{{ url_for('delete_document', doc_id=doc.id) }}">Delete Request</button>
+            </div>
+          {% endif %}
+
+          {% if versions %}
+            <div class="review-block">
+              <div class="review-section-title">Document Versions</div>
+              <ul class="review-signers-list">
+                {% for v in versions %}
+                  <li>
+                    <a class="view-link" style="font-size:12px;" target="_blank"
+                       href="{{ url_for('document_file', letter_id=doc.id, version=v.id) }}">Version {{ v.version_no }}</a>
+                    – {{ v.created_at|dt }} – {{ v.remarks }}
+                  </li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% endif %}
+        {% endif %}
+
+        <div style="margin-top:10px;">
+          <button type="button" class="btn-link-back" data-doc-modal-close>← Back</button>
+        </div>
+      </div>
+
+      <!-- RIGHT: preview / placement / (moderator) history -->
+      <div class="review-right">
+        {% if pdf_url %}
+          <div class="review-section-title">File Preview</div>
+          <div class="review-iframe-wrap" id="review-iframe-wrap">
+            <iframe id="review-pdf-frame" src="{{ pdf_url }}#toolbar=0&view=FitH"></iframe>
+          </div>
+          <div class="review-placer" id="review-placer" style="display:none;"></div>
+        {% else %}
+          <div class="review-section-title">Document History</div>
+          <div style="overflow-y:auto;">
+            {% for a in activity %}
+              <div class="act-row">
+                <strong>{{ a.action|replace('_', ' ')|capitalize }}</strong> – {{ a.details }}
+                <div class="small">{{ a.actor_name }} ({{ a.actor_role }}) · {{ a.created_at|dt }}</div>
+              </div>
+            {% else %}
+              <div class="review-subtle">No activity recorded.</div>
+            {% endfor %}
+            {% if versions %}
+              <div class="review-section-title" style="margin-top:10px;">Versions</div>
+              {% for v in versions %}
+                <div class="act-row">Version {{ v.version_no }} – {{ v.created_at|dt }} – {{ v.remarks }}</div>
+              {% endfor %}
+            {% endif %}
+            <div class="review-subtle" style="margin-top:8px;">Moderators can monitor letters but cannot open their contents.</div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const modal = document.querySelector('.review-modal[data-letter-id="{{ doc.id }}"]');
+  if (!modal) return;
+  const backdrop = modal.closest('[data-doc-modal-backdrop]');
+  const letterId = {{ doc.id|tojson }};
+
+  function closeModal(refresh) {
+    if (window.closeDocModal) { window.closeDocModal(refresh); return; }
+    window.location.href = "{{ url_for('index') }}";
+  }
+  modal.querySelectorAll('[data-doc-modal-close]').forEach(btn =>
+    btn.addEventListener('click', e => { e.preventDefault(); closeModal(false); }));
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) closeModal(false); });
+
+  function flash(cat, msg) { if (window.showFlash) showFlash(cat, msg); else alert(msg); }
+
+  function post(url, data, buttons) {
+    buttons.forEach(b => b.disabled = true);
+    return fetch(url, { method: 'POST', body: data, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(r => r.json().catch(() => ({ ok: false, error: 'Unexpected server response.' })))
+      .then(res => {
+        if (res.ok) { flash('success', res.message || 'Done.'); closeModal(true); }
+        else { flash('error', res.error || 'Action failed.'); buttons.forEach(b => b.disabled = false); }
+        return res;
+      })
+      .catch(() => { flash('error', 'Network error. Please try again.'); buttons.forEach(b => b.disabled = false); });
+  }
+
+  {% if can_act %}
+  const actionUrl = "{{ url_for('document_action', letter_id=doc.id) }}";
+  const commentUrl = "{{ url_for('letter_comment', letter_id=doc.id) }}";
+  const remarksEl = modal.querySelector('#review-remarks');
+  const allButtons = Array.from(modal.querySelectorAll('.review-actions button'));
+  const step1 = modal.querySelector('[data-step="1"]');
+  const step2 = modal.querySelector('[data-step="2"]');
+  const iframeWrap = modal.querySelector('#review-iframe-wrap');
+  const placerEl = modal.querySelector('#review-placer');
+  let placer = null;
+
+  modal.querySelectorAll('.js-decision').forEach(btn => btn.addEventListener('click', function () {
+    const action = this.dataset.action;
+    const remarks = (remarksEl.value || '').trim();
+    if ((action === 'return' || action === 'disapprove') && remarks.length < 3) {
+      flash('error', 'Please write the reason in the remarks box so the organization knows what to revise.');
+      remarksEl.focus();
+      return;
+    }
+    const label = action === 'endorse' ? 'approve this letter and forward it to your signatory'
+                : action === 'return' ? 'return this letter for revision' : 'disapprove this letter';
+    if (!confirm('Are you sure you want to ' + label + '?')) return;
+    const fd = new FormData();
+    fd.append('action', action);
+    fd.append('remarks', remarks);
+    post(actionUrl, fd, allButtons);
+  }));
+
+  const commentBtn = modal.querySelector('.js-comment');
+  if (commentBtn) commentBtn.addEventListener('click', function () {
+    const body = (remarksEl.value || '').trim();
+    if (!body) { flash('error', 'Write a remark first.'); remarksEl.focus(); return; }
+    const fd = new FormData();
+    fd.append('body', body);
+    post(commentUrl, fd, allButtons);
+  });
+
+  const approveStart = modal.querySelector('.js-approve-start');
+  if (approveStart) approveStart.addEventListener('click', function () {
+    {% if not has_signature %}
+      flash('error', 'You must upload a signature first in the Settings tab.');
+      return;
+    {% else %}
+      step1.style.display = 'none';
+      step2.style.display = '';
+      iframeWrap.style.display = 'none';
+      placerEl.style.display = '';
+      if (!placer) {
+        placer = window.SigPlacer.mount(placerEl, {
+          pdfUrl: {{ pdf_url|tojson }},
+          sigUrl: {{ signature_url|tojson }}
+        });
+      }
+    {% endif %}
+  });
+
+  const cancelBtn = modal.querySelector('.js-cancel-placement');
+  if (cancelBtn) cancelBtn.addEventListener('click', function () {
+    step2.style.display = 'none';
+    step1.style.display = '';
+    placerEl.style.display = 'none';
+    iframeWrap.style.display = '';
+  });
+
+  const applyBtn = modal.querySelector('.js-apply-signature');
+  if (applyBtn) applyBtn.addEventListener('click', function () {
+    if (!placer || !placer.isReady()) { flash('error', 'The document preview is still loading.'); return; }
+    const p = placer.getPlacement();
+    const all = modal.querySelector('input[name="apply_to"]:checked').value === 'all';
+    if (!confirm('Apply your signature and approve this letter? This cannot be undone.')) return;
+    const fd = new FormData();
+    fd.append('action', 'approve_sign');
+    fd.append('page_index', all ? -1 : p.page_index);
+    fd.append('rel_x', p.rel_x);
+    fd.append('rel_y', p.rel_y);
+    fd.append('rel_w', p.rel_w);
+    fd.append('remarks', (remarksEl.value || '').trim());
+    post(actionUrl, fd, allButtons);
+  });
+  {% endif %}
+
+  const deleteBtn = modal.querySelector('.js-delete-request');
+  if (deleteBtn) deleteBtn.addEventListener('click', function () {
+    if (!confirm('Delete this signing request? Signatories will no longer be able to process it. This cannot be undone.')) return;
+    post(deleteBtn.dataset.url, new FormData(), [deleteBtn]);
+  });
+
+  const resubmitForm = modal.querySelector('.js-resubmit-form');
+  if (resubmitForm) resubmitForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    const fd = new FormData(resubmitForm);
+    const f = resubmitForm.querySelector('input[type="file"]').files[0];
+    if (f && !f.name.toLowerCase().endsWith('.pdf')) { flash('error', 'Only PDF files are allowed.'); return; }
+    post(resubmitForm.action, fd, Array.from(resubmitForm.querySelectorAll('button')));
+  });
+})();
+</script>

@@ -1,0 +1,49 @@
+{# Searchable offices & designated signatories with live availability. Included in dashboards. #}
+<div class="status-shell" style="margin-top:18px;">
+  <div class="status-panel-header">Offices &amp; Signatories</div>
+  <div class="status-panel-sub">
+    Search an office or a signatory's name. Availability is based on the office's active accounts and its current queue.
+  </div>
+  <div class="status-panel-body">
+    <div class="status-filters">
+      <input id="directory-search" class="status-filter-input" type="text"
+             placeholder="Search by office name or signatory name…" autocomplete="off">
+    </div>
+    <div class="table-scroll">
+      <table class="status-table" id="directory-table">
+        <thead>
+          <tr>
+            <th style="width:70px;">Route Step</th>
+            <th>Office</th>
+            <th>Designated Signatory</th>
+            <th>Contact</th>
+            <th style="width:160px;">Availability</th>
+            <th>Workload</th>
+          </tr>
+        </thead>
+        <tbody id="directory-rows">
+          {% include "partials/office_directory_rows.html" %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const input = document.getElementById('directory-search');
+  const rows = document.getElementById('directory-rows');
+  if (!input || !rows) return;
+  let t = null;
+  input.addEventListener('input', function () {
+    clearTimeout(t);
+    t = setTimeout(function () {
+      fetch("{{ url_for('directory_search') }}?q=" + encodeURIComponent(input.value),
+            { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(r => r.text())
+        .then(html => { rows.innerHTML = html; })
+        .catch(() => {});
+    }, 250);
+  });
+})();
+</script>

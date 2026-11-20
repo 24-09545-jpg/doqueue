@@ -1,0 +1,153 @@
+{# templates/partials/admin_queue.html – Admin Portal: office queue management #}
+{% import "partials/_macros.html" as m with context %}
+{% include "partials/_components.html" %}
+
+<div class="welcome-block">
+  <div class="welcome-title">Incoming Queue{% if office %} &middot; {{ office.name }}{% endif %}</div>
+  <div class="welcome-sub">
+    Letters officially assigned to your office, in order of submission. Letters still with earlier offices are not shown.
+  </div>
+</div>
+
+{% if site.announcement %}
+  <div class="announce-box"><strong>Announcement</strong>{{ site.announcement }}</div>
+{% endif %}
+{% if office and not office.is_active %}
+  <div class="announce-box"><strong>Office deactivated</strong>Your office is currently deactivated by the DSA and cannot process letters.</div>
+{% elif can_sign and not user.signature_filename %}
+  <div class="announce-box"><strong>Signature needed</strong>Upload your signature in Settings so you can approve &amp; sign letters.</div>
+{% endif %}
+
+<div class="panel">
+  <div class="panel-title">My Availability</div>
+  <div class="panel-sub">
+    Let organizations know if you can sign right now. Your status is shown to organizations in their Offices &amp; Signatories list.
+    {% if user.availability_updated_at %}Last updated {{ user.availability_updated_at|dt }}.{% endif %}
+  </div>
+  <form method="post" action="{{ url_for('admin.availability') }}" class="status-filters" style="margin:0;">
+    <select name="availability" class="status-filter-select">
+      {% for key, label in availability_choices %}
+        <option value="{{ key }}" {% if (user.availability or 'available') == key %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <input name="availability_note" class="status-filter-input" maxlength="200"
+           value="{{ user.availability_note or '' }}" placeholder="Optional note, e.g. Back on Monday">
+    <button type="submit" class="btn btn-primary">Update Availability</button>
+  </form>
+</div>
+
+<div class="summary-strip cols-4">
+  <div class="summary-card">
+    <div class="summary-label">Waiting in Queue</div>
+    <div class="summary-value">{{ counts.waiting }}</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Being Processed</div>
+    <div class="summary-value">{{ counts.processing }}</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Completed</div>
+    <div class="summary-value">{{ counts.completed }}</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Returned / Disapproved</div>
+    <div class="summary-value">{{ counts.returned }}</div>
+  </div>
+</div>
+
+<div class="status-shell">
+  <div class="status-tabs">
+    <button type="button" class="status-tab active" data-qfilter="">
+      <img src="{{ url_for('static', filename='img/icon/need.png') }}" style="width:15px">
+      All Active <span class="status-tab-count">{{ queue|length }}</span>
+    </button>
+    <button type="button" class="status-tab" data-qfilter="queued">
+      <img src="{{ url_for('static', filename='img/icon/clock.png') }}" style="width:15px">
+      Waiting in Queue <span class="status-tab-count">{{ queue|selectattr('step_status','equalto','queued')|list|length }}</span>
+    </button>
+    <button type="button" class="status-tab" data-qfilter="processing">
+      <img src="{{ url_for('static', filename='img/icon/book.png') }}" style="width:15px">
+      Being Processed <span class="status-tab-count">{{ queue|selectattr('step_status','equalto','processing')|list|length }}</span>
+    </button>
+    <button type="button" class="status-tab" data-qfilter="awaiting_signature">
+      <img src="{{ url_for('static', filename='img/icon/sig.png') }}" style="width:15px">
+      Waiting for Signature <span class="status-tab-count">{{ queue|selectattr('step_status','equalto','awaiting_signature')|list|length }}</span>
+    </button>
+  </div>
+  <div class="status-panel-header">Queue</div>
+  <div class="status-panel-sub">Open a letter to review it, add remarks, then approve &amp; sign, return it for revision, or disapprove it. Updates automatically.</div>
+
+  <div class="status-panel-body">
+    {% if queue %}
+      <div class="status-filters">
+        <input id="queue-search" class="status-filter-input" type="text" placeholder="Search by organization or title…">
+      </div>
+      <div class="table-scroll">
+      <table class="status-table" id="queue-table">
+        <thead>
+          <tr>
+            <th style="width:70px;">Queue No.</th>
+            <th>Organization</th>
+            <th>Letter Title / Subject</th>
+            <th>Date Submitted</th>
+            <th>Received by Office</th>
+            <th style="width:170px;">Current Status</th>
+            <th style="width:80px;">Priority</th>
+            <th style="width:70px;">Step</th>
+            <th style="width:90px;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for q in queue %}
+            <tr class="queue-row" data-status="{{ q.step_status }}" data-text="{{ (q.organization_name ~ ' ' ~ q.title)|lower }}">
+              <td style="text-align:center;"><strong>#{{ q.queue_no }}</strong></td>
+              <td>{{ q.organization_name }}</td>
+              <td>
+                {{ q.title }}
+                {% if q.current_cycle > 1 %}<div class="small">Revised &amp; resubmitted</div>{% endif %}
+              </td>
+              <td>{{ q.submitted_at|dt }}</td>
+              <td>{{ q.received_at|dt }}</td>
+              <td>{{ m.queue_pill(q.step_status) }}</td>
+              <td style="text-transform:capitalize;">{{ q.priority }}</td>
+              <td style="text-align:center;">{{ q.step_order }} / {{ q.total_steps }}</td>
+              <td style="text-align:center;">
+                <a href="{{ url_for('document_view', letter_id=q.id) }}" class="view-link" data-modal="true">
+                  {% if q.step_status == 'queued' %}Open{% else %}Process{% endif %}
+                </a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    {% else %}
+      <div class="empty-state">Your queue is empty. New letters appear here automatically once the previous office signs.</div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+(function () {
+  const tabs = document.querySelectorAll('.status-tab[data-qfilter]');
+  const search = document.getElementById('queue-search');
+  let filter = '';
+  function apply() {
+    const q = (search && search.value || '').trim().toLowerCase();
+    document.querySelectorAll('#queue-table .queue-row').forEach(function (row) {
+      const okStatus = !filter || row.dataset.status === filter;
+      const okText = !q || (row.dataset.text || '').includes(q);
+      row.style.display = okStatus && okText ? '' : 'none';
+    });
+  }
+  tabs.forEach(function (t) {
+    t.addEventListener('click', function () {
+      tabs.forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      filter = t.dataset.qfilter;
+      apply();
+    });
+  });
+  if (search) search.addEventListener('input', apply);
+})();
+</script>

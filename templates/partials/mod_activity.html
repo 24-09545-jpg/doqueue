@@ -1,0 +1,54 @@
+{# Moderator Portal – activity log (audit trail) #}
+{% include "partials/_components.html" %}
+
+<div class="welcome-block">
+  <div class="welcome-title">Activity Log</div>
+  <div class="welcome-sub">Audit trail of submissions, reviews, signatures, decisions, revisions and management changes (latest 500).</div>
+</div>
+
+<div class="status-shell">
+  <div class="status-panel-body">
+    <form class="status-filters" id="activity-filter">
+      <input class="status-filter-input" name="q" value="{{ q }}" placeholder="Search action, details, person or letter…">
+      <select class="status-filter-select" name="role">
+        <option value="">All roles</option>
+        <option value="user" {% if role == 'user' %}selected{% endif %}>Organizations</option>
+        <option value="office" {% if role == 'office' %}selected{% endif %}>Signatory offices</option>
+        <option value="moderator" {% if role == 'moderator' %}selected{% endif %}>Moderators</option>
+        <option value="system" {% if role == 'system' %}selected{% endif %}>System</option>
+      </select>
+      <button type="submit" class="btn btn-secondary">Filter</button>
+    </form>
+    <div class="table-scroll">
+    <table class="status-table">
+      <thead><tr><th style="width:170px;">Date &amp; Time</th><th>Who</th><th>Office</th><th>Action</th><th>Letter</th><th>Details</th><th>IP</th></tr></thead>
+      <tbody>
+        {% for a in entries %}
+          <tr>
+            <td>{{ a.created_at|dt }}</td>
+            <td>{{ a.actor_name }} <span class="small">({{ a.actor_role }})</span></td>
+            <td>{{ a.office_name or '—' }}</td>
+            <td>{{ a.action|replace('_', ' ')|capitalize }}</td>
+            <td>{% if a.letter_id %}<a href="{{ url_for('document_view', letter_id=a.letter_id) }}" class="view-link" data-modal="true">#{{ a.letter_id }} {{ a.letter_title }}</a>{% else %}—{% endif %}</td>
+            <td>{{ a.details }}</td>
+            <td class="small">{{ a.ip }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="7" class="empty-state">No matching activity.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const f = document.getElementById('activity-filter');
+  if (!f) return;
+  f.addEventListener('submit', function (e) {
+    e.preventDefault();
+    window.loadIntoContent("{{ url_for('moderator.activity_partial') }}?" + new URLSearchParams(new FormData(f)).toString());
+  });
+})();
+</script>

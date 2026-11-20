@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+{% block title %}Register | E-Sign Request Portal{% endblock %}
+{% block content %}
+<style>
+  /* Override base container for auth page */
+  html, body {
+    height: 100%;
+  }
+
+  body {
+    background: #e5e7eb;
+  }
+
+  .container {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .page-bg {
+    height: 100%;
+    background: #e5e7eb;
+    display: flex;
+    justify-content: center;
+  }
+
+  .portal-shell {
+    width: 100%;
+    max-width: 960px;
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    border-radius: 2px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    margin: 0 auto; 
+  }
+
+  .portal-banner img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .portal-subheader {
+    text-align: center;
+    padding: 8px 16px;
+    border-top: 1px solid #e5e7eb;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 14px;
+    color: #374151;
+    background-color: #fafafa;
+  }
+
+  .auth-outer {
+    padding: 28px 24px 36px;
+    display: flex;
+    justify-content: center;
+  }
+
+  .register-card {
+    width: 100%;
+    max-width: 520px;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    background: #ffffff;
+    padding: 26px 30px 24px;
+  }
+
+  .register-card h2 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 18px;
+    color: #111827;
+    text-align: center;
+  }
+
+  .form-group {
+    margin-bottom: 18px;
+  }
+
+  .form-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #333;
+  }
+
+  .form-group input {
+    width: 100%;
+    padding: 11px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: inherit;
+    background: #f9fafb;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  }
+
+  .form-group input:focus {
+    outline: none;
+    border-color: #003399;
+    box-shadow: 0 0 0 3px rgba(0, 51, 153, 0.12);
+    background: #ffffff;
+  }
+
+  .helper-text {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 4px;
+  }
+
+  .submit-btn {
+    width: 100%;
+    padding: 11px;
+    background: #16a34a;
+    color: #fff5f5;
+    border: none;
+    border-radius: 999px;
+    font-size: 15px;
+    font-weight: 300;
+    cursor: pointer;
+    transition: box-shadow 0.2s, transform 0.1s, background 0.15s;
+    margin-top: 4px;
+  }
+
+  .submit-btn:hover {
+    box-shadow: 0 4px 12px rgba(0, 51, 153, 0.25);
+    background: #f59e0b;
+  }
+
+  .submit-btn:active {
+    transform: scale(0.99);
+  }
+
+  .register-footer {
+    padding-top: 16px;
+    text-align: center;
+    font-size: 14px;
+    color: #666;
+  }
+
+  .register-footer a {
+    color: #16a34a;
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .register-footer a:hover {
+    text-decoration: underline;
+  }
+
+  @media (max-height: 720px) {
+    .portal-shell {
+      min-height: auto;
+    }
+    .page-bg {
+      align-items: flex-start;
+    }
+  }
+</style>
+
+<div class="page-bg">
+  <div class="portal-shell">
+    <!-- Same banner as login -->
+    <div class="portal-banner">
+      <img src="{{ url_for('static', filename='img/bsu-banner.jpg') }}" alt="E-Sign Request Portal Banner">
+    </div>
+
+    <div class="portal-subheader">
+      Create E-Sign Request Portal Account
+    </div>
+
+    <div class="auth-outer">
+      <div class="register-card">
+        <h2>Create Account</h2>
+
+        <form method="post">
+          <div class="form-group">
+            <label for="email">School Email *</label>
+            <input type="email" id="email" name="email" required placeholder="your.id@g.batstate-u.edu.ph">
+            <div class="helper-text">
+              Must use a BSU email (ends with @g.batstate-u.edu.ph).
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="name">Full Name *</label>
+            <input type="text" id="name" name="name" required placeholder="Name">
+          </div>
+
+          <div class="form-group">
+            <label for="organization">Organization *</label>
+            <input type="text" id="organization" name="organization" required placeholder="e.g. Computer Engineering Student Organization">
+            <div class="helper-text">
+              Joining an organization that already has an account requires DSA moderator approval.
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="password">Password *</label>
+            <input type="password" id="password" name="password" required>
+            <div class="helper-text">
+              Use a strong password with at least 8 characters.
+            </div>
+          </div>
+
+          <button type="submit" class="submit-btn">Create Account</button>
+        </form>
+
+        <div class="register-footer">
+          Already have an account?
+          <a href="{{ url_for('login') }}">Sign in here</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,196 @@
+{# Moderator Portal – accounts (organizations, signatory offices, moderators) #}
+{% import "partials/_macros.html" as m with context %}
+{% include "partials/_components.html" %}
+
+<div class="welcome-block">
+  <div class="welcome-title">Accounts</div>
+  <div class="welcome-sub">Create, update, activate or deactivate organization, signatory office and moderator accounts.</div>
+</div>
+
+<div class="panel">
+  <div class="panel-title">Create Account</div>
+  <div class="panel-sub">Signatory office accounts log in through the Admin Portal; moderators through the Moderator Portal.</div>
+  <form method="post" action="{{ url_for('moderator.account_save') }}" id="new-account-form">
+    <div class="form-grid">
+      <div class="form-row"><label class="form-label">Full name *</label><input class="form-input" name="name" required></div>
+      <div class="form-row"><label class="form-label">Email *</label><input class="form-input" type="email" name="email" required></div>
+      <div class="form-row">
+        <label class="form-label">Role *</label>
+        <select class="form-select js-role" name="role">
+          <option value="office">Signatory office (Admin Portal)</option>
+          <option value="user">Organization (User Portal)</option>
+          <option value="moderator">Moderator</option>
+        </select>
+      </div>
+      <div class="form-row"><label class="form-label">Temporary password * (min. 8)</label><input class="form-input" type="password" name="password" minlength="8" required></div>
+      <div class="form-row js-office-field">
+        <label class="form-label">Office *</label>
+        <select class="form-select" name="office_id">
+          {% for o in offices if o.is_active %}<option value="{{ o.id }}">{{ o.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-row js-office-field"><label class="form-label">Position / title</label><input class="form-input" name="position" placeholder="e.g. Director, OSA"></div>
+      <div class="form-row js-org-field" style="display:none;"><label class="form-label">Organization *</label><input class="form-input" name="organization" list="org-list" placeholder="Existing or new organization"></div>
+    </div>
+    <div class="form-row js-office-field" style="font-size:12px;">
+      <label><input type="checkbox" name="make_signatory" value="1" checked> Make this the office's designated signatory</label>
+    </div>
+    <button type="submit" class="btn btn-primary">Create Account</button>
+  </form>
+  <datalist id="org-list">{% for g in orgs %}<option value="{{ g.name }}">{% endfor %}</datalist>
+</div>
+
+<div class="status-shell">
+  <div class="status-tabs">
+    <button type="button" class="status-tab active" data-afilter="">All <span class="status-tab-count">{{ users|length }}</span></button>
+    <button type="button" class="status-tab" data-afilter="office">Signatory Offices</button>
+    <button type="button" class="status-tab" data-afilter="user">Organizations' Users</button>
+    <button type="button" class="status-tab" data-afilter="moderator">Moderators</button>
+    <button type="button" class="status-tab" data-afilter="inactive">Inactive / Pending</button>
+  </div>
+  <div class="status-panel-body">
+    <div class="status-filters">
+      <input id="acct-search" class="status-filter-input" type="text" placeholder="Search name, email, office, organization…">
+    </div>
+    <div class="table-scroll">
+    <table class="status-table" id="acct-table">
+      <thead>
+        <tr><th>Name</th><th>Email</th><th>Role</th><th>Office / Organization</th><th>Last Login</th><th style="width:90px;">Status</th><th style="width:150px;">Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+          <tr class="acct-row" data-role="{{ u.role }}" data-active="{{ u.is_active }}"
+              data-text="{{ (u.name ~ ' ' ~ u.email ~ ' ' ~ (u.office_name or '') ~ ' ' ~ (u.organization_name or ''))|lower }}">
+            <td>{{ u.name }}{% if u.position %}<div class="small">{{ u.position }}</div>{% endif %}</td>
+            <td>{{ u.email }}</td>
+            <td>{{ {'user':'Organization','office':'Signatory Office','moderator':'Moderator'}[u.role] }}</td>
+            <td>{{ u.office_name or u.organization_name or '—' }}</td>
+            <td>{{ u.last_login_at|dt if u.last_login_at else 'Never' }}</td>
+            <td>{{ m.status_pill('Available' if u.is_active else 'Unavailable', 'Active' if u.is_active else 'Inactive') }}</td>
+            <td>
+              <details class="row-edit"><summary class="view-link">Edit</summary></details>
+              {% if u.id != me.id %}
+                <form method="post" action="{{ url_for('moderator.account_toggle', user_id=u.id) }}" class="inline-form">
+                  <button type="submit" class="view-link" style="color:{{ '#b91c1c' if u.is_active else '#166534' }};">{{ 'Deactivate' if u.is_active else 'Activate' }}</button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+          <tr class="acct-edit-row" style="display:none;">
+            <td colspan="7">
+              <form method="post" action="{{ url_for('moderator.account_save') }}" class="edit-box">
+                <input type="hidden" name="id" value="{{ u.id }}">
+                <div class="form-grid">
+                  <div class="form-row"><label class="form-label">Full name</label><input class="form-input" name="name" value="{{ u.name }}" required></div>
+                  <div class="form-row"><label class="form-label">Email</label><input class="form-input" type="email" name="email" value="{{ u.email }}" required></div>
+                  <div class="form-row">
+                    <label class="form-label">Role</label>
+                    <select class="form-select js-role" name="role">
+                      <option value="office" {% if u.role == 'office' %}selected{% endif %}>Signatory office</option>
+                      <option value="user" {% if u.role == 'user' %}selected{% endif %}>Organization</option>
+                      <option value="moderator" {% if u.role == 'moderator' %}selected{% endif %}>Moderator</option>
+                    </select>
+                  </div>
+                  <div class="form-row"><label class="form-label">New password (leave blank to keep)</label><input class="form-input" type="password" name="password" minlength="8"></div>
+                  <div class="form-row js-office-field">
+                    <label class="form-label">Office</label>
+                    <select class="form-select" name="office_id">
+                      {% for o in offices %}<option value="{{ o.id }}" {% if o.id == u.office_id %}selected{% endif %}>{{ o.name }}</option>{% endfor %}
+                    </select>
+                  </div>
+                  <div class="form-row js-office-field"><label class="form-label">Position / title</label><input class="form-input" name="position" value="{{ u.position }}"></div>
+                  <div class="form-row js-org-field"><label class="form-label">Organization</label><input class="form-input" name="organization" list="org-list" value="{{ u.organization_name or '' }}"></div>
+                </div>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<div class="status-shell">
+  <div class="status-panel-header">Registered Organizations</div>
+  <div class="status-panel-sub">Deactivating an organization also deactivates its member accounts.</div>
+  <div class="status-panel-body">
+    <div class="table-scroll">
+    <table class="status-table">
+      <thead><tr><th>Organization</th><th>Contact</th><th style="width:80px;">Members</th><th style="width:80px;">Letters</th><th style="width:90px;">Status</th><th style="width:150px;">Actions</th></tr></thead>
+      <tbody>
+        {% for g in orgs %}
+          <tr>
+            <td>{{ g.name }}{% if g.description %}<div class="small">{{ g.description }}</div>{% endif %}</td>
+            <td>{{ g.contact_email or '—' }}</td>
+            <td style="text-align:center;">{{ g.members }}</td>
+            <td style="text-align:center;">{{ g.letters }}</td>
+            <td>{{ m.status_pill('Available' if g.is_active else 'Unavailable', 'Active' if g.is_active else 'Inactive') }}</td>
+            <td>
+              <details class="row-edit"><summary class="view-link">Edit</summary></details>
+              <form method="post" action="{{ url_for('moderator.organization_toggle', org_id=g.id) }}" class="inline-form"
+                    onsubmit="return confirm('{{ 'Deactivate' if g.is_active else 'Reactivate' }} this organization?');">
+                <button type="submit" class="view-link" style="color:{{ '#b91c1c' if g.is_active else '#166534' }};">{{ 'Deactivate' if g.is_active else 'Reactivate' }}</button>
+              </form>
+            </td>
+          </tr>
+          <tr class="acct-edit-row" style="display:none;">
+            <td colspan="6">
+              <form method="post" action="{{ url_for('moderator.organization_save', org_id=g.id) }}" class="edit-box">
+                <div class="form-grid">
+                  <div class="form-row"><label class="form-label">Name</label><input class="form-input" name="name" value="{{ g.name }}" required></div>
+                  <div class="form-row"><label class="form-label">Contact email</label><input class="form-input" type="email" name="contact_email" value="{{ g.contact_email }}"></div>
+                </div>
+                <div class="form-row"><label class="form-label">Description</label><textarea class="form-textarea" name="description" rows="2">{{ g.description }}</textarea></div>
+                <button type="submit" class="btn btn-primary">Save</button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="6" class="empty-state">No organizations yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  function syncRole(form) {
+    const sel = form.querySelector('.js-role');
+    if (!sel) return;
+    const role = sel.value;
+    form.querySelectorAll('.js-office-field').forEach(el => el.style.display = role === 'office' ? '' : 'none');
+    form.querySelectorAll('.js-org-field').forEach(el => el.style.display = role === 'user' ? '' : 'none');
+  }
+  document.querySelectorAll('form').forEach(function (f) {
+    const sel = f.querySelector('.js-role');
+    if (sel) { sel.addEventListener('change', () => syncRole(f)); syncRole(f); }
+  });
+  document.querySelectorAll('details.row-edit').forEach(function (d) {
+    d.addEventListener('toggle', function () {
+      const row = d.closest('tr').nextElementSibling;
+      if (row && row.classList.contains('acct-edit-row')) row.style.display = d.open ? '' : 'none';
+    });
+  });
+  const tabs = document.querySelectorAll('.status-tab[data-afilter]');
+  const search = document.getElementById('acct-search');
+  let filter = '';
+  function apply() {
+    const q = (search.value || '').trim().toLowerCase();
+    document.querySelectorAll('#acct-table .acct-row').forEach(function (row) {
+      const okF = !filter || (filter === 'inactive' ? row.dataset.active === '0' : row.dataset.role === filter);
+      const ok = okF && (!q || row.dataset.text.includes(q));
+      row.style.display = ok ? '' : 'none';
+      const edit = row.nextElementSibling;
+      if (!ok && edit) { edit.style.display = 'none'; row.querySelector('details').open = false; }
+    });
+  }
+  tabs.forEach(t => t.addEventListener('click', function () {
+    tabs.forEach(x => x.classList.remove('active')); t.classList.add('active'); filter = t.dataset.afilter; apply();
+  }));
+  search.addEventListener('input', apply);
+})();
+</script>

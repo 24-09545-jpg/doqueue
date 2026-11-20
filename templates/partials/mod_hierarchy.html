@@ -1,0 +1,109 @@
+{# Moderator Portal – signing hierarchy #}
+{% import "partials/_macros.html" as m with context %}
+{% include "partials/_components.html" %}
+
+<div class="welcome-block">
+  <div class="welcome-title">Signing Hierarchy</div>
+  <div class="welcome-sub">
+    The order in which offices sign organization letters. Saved changes apply to new submissions and resubmissions;
+    letters already in progress keep the route they started with.
+  </div>
+</div>
+
+<div class="panel-grid">
+  <div class="panel">
+    <div class="panel-title">Current Order</div>
+    <div class="panel-sub">Use the arrows to rearrange, or remove an office from the process. Click Save when done.</div>
+    <form method="post" action="{{ url_for('moderator.hierarchy_save') }}" id="hierarchy-form">
+      <table class="status-table" id="hierarchy-table">
+        <thead><tr><th style="width:60px;">Step</th><th>Office</th><th>Signatory</th><th style="width:140px;">Move</th></tr></thead>
+        <tbody>
+          {% for h in hierarchy %}
+            <tr data-office="{{ h.id }}">
+              <td class="js-step" style="text-align:center;">{{ loop.index }}</td>
+              <td>
+                {{ h.name }}<input type="hidden" name="office_ids" value="{{ h.id }}">
+                {% if not h.is_active %}<div class="field-error">Inactive – skipped for new letters</div>
+                {% elif not h.active_accounts %}<div class="field-error">No active account – letters would wait here</div>{% endif %}
+              </td>
+              <td>{{ h.signatory_name or '—' }}</td>
+              <td style="text-align:center; white-space:nowrap;">
+                <button type="button" class="btn-ghost btn js-up" title="Move up">▲</button>
+                <button type="button" class="btn-ghost btn js-down" title="Move down">▼</button>
+                <button type="button" class="btn-ghost btn js-remove" title="Remove" style="color:#b91c1c;">✕</button>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div class="empty-state js-empty" {% if hierarchy %}style="display:none;"{% endif %}>No offices in the hierarchy yet. Add one from the right.</div>
+      <div style="margin-top:12px;">
+        <button type="submit" class="btn btn-primary">Save Hierarchy</button>
+        <button type="button" class="btn btn-secondary" onclick="window.reloadCurrentPage && window.reloadCurrentPage()">Discard Changes</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Add Office to the Process</div>
+    <div class="panel-sub">Offices not yet part of the signing route.</div>
+    {% if available %}
+      <table class="status-table">
+        <tbody>
+          {% for o in available %}
+            <tr data-office="{{ o.id }}" data-name="{{ o.name }}" data-signatory="{{ o.signatory_name or '—' }}">
+              <td>{{ o.name }}{% if not o.is_active %} <span class="small">(inactive)</span>{% endif %}</td>
+              <td style="width:90px; text-align:center;"><button type="button" class="btn btn-secondary js-add" style="padding:4px 12px;">Add</button></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty-state" style="padding:20px;">All offices are already in the hierarchy.</div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+(function () {
+  const tbody = document.querySelector('#hierarchy-table tbody');
+  const empty = document.querySelector('.js-empty');
+  if (!tbody) return;
+  function renumber() {
+    Array.from(tbody.rows).forEach((r, i) => r.querySelector('.js-step').textContent = i + 1);
+    empty.style.display = tbody.rows.length ? 'none' : '';
+  }
+  tbody.addEventListener('click', function (e) {
+    const row = e.target.closest('tr');
+    if (!row) return;
+    if (e.target.closest('.js-up') && row.previousElementSibling) tbody.insertBefore(row, row.previousElementSibling);
+    if (e.target.closest('.js-down') && row.nextElementSibling) tbody.insertBefore(row.nextElementSibling, row);
+    if (e.target.closest('.js-remove')) row.remove();
+    renumber();
+  });
+  document.querySelectorAll('.js-add').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      const src = btn.closest('tr');
+      const tr = document.createElement('tr');
+      tr.dataset.office = src.dataset.office;
+      tr.innerHTML = '<td class="js-step" style="text-align:center;"></td>' +
+        '<td></td><td></td>' +
+        '<td style="text-align:center; white-space:nowrap;">' +
+        '<button type="button" class="btn-ghost btn js-up">▲</button> ' +
+        '<button type="button" class="btn-ghost btn js-down">▼</button> ' +
+        '<button type="button" class="btn-ghost btn js-remove" style="color:#b91c1c;">✕</button></td>';
+      tr.cells[1].textContent = src.dataset.name;
+      const hidden = document.createElement('input');
+      hidden.type = 'hidden'; hidden.name = 'office_ids'; hidden.value = src.dataset.office;
+      tr.cells[1].appendChild(hidden);
+      tr.cells[2].textContent = src.dataset.signatory;
+      tbody.appendChild(tr);
+      src.remove();
+      renumber();
+    });
+  });
+  document.getElementById('hierarchy-form').addEventListener('submit', function (e) {
+    if (!tbody.rows.length) { e.preventDefault(); if (window.showFlash) showFlash('error', 'Add at least one office.'); }
+  });
+})();
+</script>

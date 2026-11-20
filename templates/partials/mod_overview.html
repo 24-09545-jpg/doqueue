@@ -1,0 +1,99 @@
+{# Moderator Portal – system monitoring overview #}
+{% import "partials/_macros.html" as m with context %}
+{% include "partials/_components.html" %}
+
+<div class="welcome-block">
+  <div class="welcome-title">System Overview</div>
+  <div class="welcome-sub">Monitor letters, signatory offices and recent activity across the DSA System.</div>
+</div>
+
+<div class="summary-strip cols-6">
+  <div class="summary-card"><div class="summary-label">Total Letters</div><div class="summary-value">{{ stats.total }}</div></div>
+  <div class="summary-card"><div class="summary-label">Pending / In Process</div><div class="summary-value">{{ stats.in_progress }}</div></div>
+  <div class="summary-card"><div class="summary-label">Fully Signed</div><div class="summary-value">{{ stats.fully_signed }}</div></div>
+  <div class="summary-card"><div class="summary-label">Disapproved</div><div class="summary-value">{{ stats.disapproved }}</div></div>
+  <div class="summary-card"><div class="summary-label">Returned</div><div class="summary-value">{{ stats.returned }}</div></div>
+  <div class="summary-card"><div class="summary-label">Last Tracking No.</div><div class="summary-value" style="font-size:15px;">{% if stats.tracking_counter %}#{{ '%04d'|format(stats.tracking_counter) }}{% else %}—{% endif %}</div></div>
+</div>
+
+{% if not hierarchy %}
+  <div class="announce-box"><strong>Setup needed</strong>No signing hierarchy is configured yet, so organizations cannot submit letters. Add offices, create their accounts, then set the Signing Hierarchy.</div>
+{% endif %}
+
+{% if pending_accounts %}
+<div class="status-shell">
+  <div class="status-panel-header">Accounts Waiting for Approval</div>
+  <div class="status-panel-sub">People who registered to join an existing organization.</div>
+  <div class="status-panel-body">
+    <table class="status-table">
+      <thead><tr><th>Name</th><th>Email</th><th>Organization</th><th>Registered</th><th style="width:110px;">Action</th></tr></thead>
+      <tbody>
+        {% for u in pending_accounts %}
+          <tr>
+            <td>{{ u.name }}</td><td>{{ u.email }}</td><td>{{ u.organization_name }}</td><td>{{ u.created_at|dt }}</td>
+            <td style="text-align:center;">
+              <form method="post" action="{{ url_for('moderator.account_toggle', user_id=u.id) }}" class="inline-form">
+                <button type="submit" class="btn btn-primary" style="padding:4px 12px;">Approve</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="status-shell">
+  <div class="status-panel-header">Signatory Office Activity</div>
+  <div class="status-panel-sub">Live workload per office (based on the signing queues).</div>
+  <div class="status-panel-body">
+    <div class="table-scroll">
+    <table class="status-table">
+      <thead>
+        <tr>
+          <th style="width:70px;">Route Step</th><th>Office</th><th>Designated Signatory</th>
+          <th>Waiting</th><th>Processing</th><th>Completed</th><th>Returned / Disapproved</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in offices %}
+          <tr>
+            <td style="text-align:center;">{{ o.hierarchy_order or '—' }}</td>
+            <td>{{ o.name }}{% if not o.is_active %} <span class="small">(inactive)</span>{% endif %}</td>
+            <td>{{ o.signatory_name or '—' }}</td>
+            <td style="text-align:center;">{{ o.counts.waiting }}</td>
+            <td style="text-align:center;">{{ o.counts.processing }}</td>
+            <td style="text-align:center;">{{ o.counts.completed }}</td>
+            <td style="text-align:center;">{{ o.counts.returned }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="7" class="empty-state">No offices yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<div class="status-shell">
+  <div class="status-panel-header">Recent Activity</div>
+  <div class="status-panel-sub">The full audit trail is under Activity Log.</div>
+  <div class="status-panel-body">
+    <table class="status-table">
+      <thead><tr><th style="width:170px;">Date &amp; Time</th><th>Who</th><th>Action</th><th>Details</th></tr></thead>
+      <tbody>
+        {% for a in recent %}
+          <tr>
+            <td>{{ a.created_at|dt }}</td>
+            <td>{{ a.actor_name }} <span class="small">({{ a.actor_role }})</span></td>
+            <td>{{ a.action|replace('_', ' ')|capitalize }}</td>
+            <td>{{ a.details }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="4" class="empty-state">No activity yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>

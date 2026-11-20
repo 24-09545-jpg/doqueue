@@ -1,0 +1,491 @@
+{# templates/partials/sign_yourself.html #}
+
+<style>
+  .selfsign-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  .selfsign-layout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .selfsign-panel {
+    background: #ffffff;
+    border-radius: 14px;
+    border: 1px solid #e5e7eb;
+    box-shadow: var(--shadow-sm, 0 8px 18px rgba(15,23,42,0.08));
+    padding: 14px 16px 16px;
+  }
+
+  .selfsign-panel--left {
+    flex: 1.4 1 380px;
+  }
+
+  .selfsign-panel--right {
+    flex: 1 1 280px;
+  }
+
+  .selfsign-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+  }
+
+  .selfsign-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .selfsign-sub {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 2px;
+  }
+
+  .selfsign-body {
+    font-size: 13px;
+    color: #374151;
+  }
+
+  .selfsign-form-row {
+    margin-bottom: 10px;
+  }
+
+  .selfsign-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 4px;
+  }
+
+  .selfsign-input {
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid #d1d5db;
+    padding: 7px 9px;
+    font-size: 13px;
+    background: #f9fafb;
+  }
+
+  .selfsign-input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 1px rgba(37,99,235,0.25);
+    background: #ffffff;
+  }
+
+  .selfsign-note {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 6px;
+  }
+
+  .selfsign-preview-empty {
+    padding: 20px;
+    text-align: center;
+    font-size: 13px;
+    color: #6b7280;
+  }
+
+  /* Table of self-signed docs */
+  .selfsign-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-top: 8px;
+  }
+
+  .selfsign-table th,
+  .selfsign-table td {
+    padding: 6px 8px;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: left;
+  }
+
+  .selfsign-table th {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6b7280;
+  }
+
+  .selfsign-badge-empty {
+    margin-top: 4px;
+    font-size: 12px;
+    color: #9ca3af;
+  }
+
+  .hidden {
+    display: none !important;
+  }
+
+  /* Modal for placing signature */
+  .selfsign-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .selfsign-modal.show {
+    display: flex;
+  }
+
+  .selfsign-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+  }
+
+  .selfsign-modal-dialog {
+    position: relative;
+    z-index: 81;
+    background: #ffffff;
+    border-radius: 16px;
+    max-width: 780px; /* narrower so PDF doesn't fill too much */
+    width: 100%;
+    max-height: 85vh; /* reduced to fit buttons without scroll */
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 24px 50px rgba(15,23,42,0.35);
+    overflow: hidden;
+  }
+
+  .selfsign-modal-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f9fafb;
+  }
+
+  .selfsign-modal-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #111827;
+  }
+
+  .selfsign-modal-header small {
+    font-size: 11px;
+    color: #6b7280;
+  }
+
+  .selfsign-modal-close {
+    border: none;
+    background: transparent;
+    font-size: 18px;
+    cursor: pointer;
+    color: #6b7280;
+  }
+
+  .selfsign-modal-body {
+    padding: 10px 16px 12px;
+  }
+
+  .selfsign-pdf-wrap {
+    position: relative;
+    width: 100%;
+    height: 440px;
+    background: #111827;
+    border-radius: 10px;
+    overflow: hidden; /* revert: use native viewer zoom/toolbar */
+    border: 1px solid #e5e7eb;
+  }
+
+  .selfsign-pdf-frame {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: #111827;
+  }
+
+  .selfsign-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none; /* only signature is draggable */
+  }
+
+  .selfsign-signature-img {
+    position: absolute;
+    max-width: 180px;
+    max-height: 80px;
+    cursor: grab;
+    pointer-events: auto;
+    box-shadow: 0 4px 10px rgba(15,23,42,0.25);
+    border-radius: 6px;
+    background: #ffffff;
+  }
+
+  .selfsign-signature-img:active {
+    cursor: grabbing;
+  }
+
+  .selfsign-modal-footer {
+    padding: 10px 16px 14px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    background: #f9fafb;
+  }
+
+  .selfsign-modal-footer-text {
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+  @media (max-width: 900px) {
+    .selfsign-layout {
+      flex-direction: column;
+    }
+    .selfsign-pdf-wrap {
+      height: 340px; /* reduced for mobile */
+    }
+  }
+</style>
+
+<div class="selfsign-wrap">
+  <div class="selfsign-layout">
+    <!-- LEFT: upload + trigger modal -->
+    <section class="selfsign-panel selfsign-panel--left">
+      <div class="selfsign-header">
+        <div>
+          <div class="selfsign-title">Sign a PDF Yourself</div>
+          <div class="selfsign-sub">
+            Upload a PDF, then position your saved signature and save the signed copy.
+          </div>
+        </div>
+      </div>
+
+      <div class="selfsign-body">
+        <form id="selfsign-upload-form" enctype="multipart/form-data">
+          <div class="selfsign-form-row">
+            <label class="selfsign-label" for="selfsign-document">
+              PDF file to sign
+            </label>
+            <input
+              id="selfsign-document"
+              name="document"
+              type="file"
+              accept="application/pdf"
+              class="selfsign-input"
+            >
+          </div>
+
+          <!-- ✅ button is fine, no href needed -->
+          <button type="submit" class="btn btn-primary">
+            Upload &amp; Place Signature
+          </button>
+
+          <div class="selfsign-note">
+            This does not create a request or appear in the dashboard tables.
+            Only you can see and download your self-signed PDFs here.
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- RIGHT: self-signed docs list -->
+    <section class="selfsign-panel selfsign-panel--right">
+      <div class="selfsign-header">
+        <div>
+          <div class="selfsign-title">Your Self-Signed PDFs</div>
+          <div class="selfsign-sub">
+            Download the PDF files you’ve signed yourself.
+          </div>
+        </div>
+      </div>
+
+      <div class="selfsign-body">
+        {% if docs and docs|length > 0 %}
+          <table class="selfsign-table">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th style="width:80px;">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for d in docs %}
+                <tr>
+                  <td>
+                    <div>{{ d.title }}</div>
+                    <div class="selfsign-badge-empty">
+                      {{ d.original_name }}
+                    </div>
+                  </td>
+                  <td>
+                    <a href="{{ url_for('self_sign_download', doc_id=d.id) }}"
+                       class="btn btn-secondary">
+                      Download
+                    </a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <div class="selfsign-preview-empty">
+            You don’t have any self-signed documents yet.  
+            Upload a PDF on the left, place your signature, and save it here.
+          </div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+</div>
+  </div>
+</div>
+
+{# Modal for placing signature #}
+<div id="selfsign-modal" class="selfsign-modal">
+  <div class="selfsign-modal-backdrop" id="selfsign-modal-backdrop"></div>
+
+  <div class="selfsign-modal-dialog">
+    <div class="selfsign-modal-header">
+      <div>
+        <div class="selfsign-modal-title">Place Your Signature</div>
+        <small>Drag your signature to the correct position; drag a corner to resize it.</small>
+      </div>
+      <button type="button" class="selfsign-modal-close" id="selfsign-modal-close">
+        ×
+      </button>
+    </div>
+
+    <div class="selfsign-modal-body">
+      <div class="selfsign-pdf-wrap" id="selfsign-placer"></div>
+    </div>
+
+        <script>
+        (function() {
+          const uploadForm = document.getElementById('selfsign-upload-form');
+          const fileInput = document.getElementById('selfsign-document');
+          const modal = document.getElementById('selfsign-modal');
+          const placerEl = document.getElementById('selfsign-placer');
+          const finalizeForm = document.getElementById('selfsign-finalize-form');
+          const uploadUrl = "{{ url_for('self_sign_temp_upload') }}";
+          let placer = null;
+
+          function showModal() { if (modal) modal.classList.add('show'); }
+          function hideModal() {
+            if (!modal) return;
+            modal.classList.remove('show');
+            if (placer) { placer.destroy(); placer = null; }
+            const t = document.getElementById('selfsign-temp-id');
+            if (t) t.value = '';
+          }
+
+          if (uploadForm) {
+            uploadForm.addEventListener('submit', function (e) {
+              e.preventDefault(); e.stopPropagation();
+              if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+                if (window.showFlash) showFlash('error', 'Please choose a PDF file to upload.');
+                return;
+              }
+              const file = fileInput.files[0];
+              if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+                if (window.showFlash) showFlash('error', 'Only PDF files (.pdf) are allowed.');
+                return;
+              }
+              const fd = new FormData();
+              fd.append('document', file);
+              fetch(uploadUrl, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(r => r.json())
+                .then(data => {
+                  if (!data || data.ok !== true) {
+                    if (window.showFlash) showFlash('error', (data && data.error) || 'Upload failed.');
+                    return;
+                  }
+                  document.getElementById('selfsign-temp-id').value = String(data.temp_id || '');
+                  showModal();
+                  placer = window.SigPlacer.mount(placerEl, { pdfUrl: data.pdf_url, sigUrl: data.signature_url });
+                  if (window.showFlash) showFlash('success', 'PDF uploaded. Drag your signature to place it; drag a corner to resize.');
+                })
+                .catch(() => { if (window.showFlash) showFlash('error', 'Upload error. Please try again.'); });
+            });
+          }
+
+          if (finalizeForm) {
+            finalizeForm.addEventListener('submit', function (e) {
+              if (!placer || !placer.isReady()) {
+                e.preventDefault();
+                if (window.showFlash) showFlash('error', 'The preview is still loading.');
+                return;
+              }
+              const p = placer.getPlacement();
+              let val = 'one';
+              document.querySelectorAll('input[name="selfsign-apply-to-radio"]').forEach(r => { if (r.checked) val = r.value; });
+              document.getElementById('selfsign-apply-to').value = val;
+              document.getElementById('selfsign-page-index').value = p.page_index;
+              document.getElementById('selfsign-rel-x').value = p.rel_x;
+              document.getElementById('selfsign-rel-y').value = p.rel_y;
+              document.getElementById('selfsign-rel-w').value = p.rel_w;
+            });
+          }
+
+          // footer buttons are rendered after this script; bind on click delegation
+          document.addEventListener('click', function (e) {
+            if (e.target.closest('#selfsign-modal-close, #selfsign-cancel-btn') ||
+                e.target.id === 'selfsign-modal-backdrop') {
+              e.preventDefault();
+              hideModal();
+            }
+          });
+        })();
+        </script>
+
+    <div class="selfsign-modal-footer">
+      <div class="selfsign-modal-footer-text">
+        Drag the signature where you want it to appear, choose page scope, then click <strong>Save Signed PDF</strong>.
+      </div>
+      <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end;">
+        <div style="font-size:12px; color:#4b5563; text-align:right;">
+          <label>
+            <input type="radio" name="selfsign-apply-to-radio" value="one" checked>
+            Page shown only
+          </label>
+          &nbsp;&nbsp;
+          <label>
+            <input type="radio" name="selfsign-apply-to-radio" value="all">
+            All pages (same position)
+          </label>
+        </div>
+
+        <div style="display:flex; gap:8px; justify-content:flex-end;">
+          <button type="button" class="btn btn-secondary" id="selfsign-cancel-btn">
+            Cancel
+          </button>
+
+          <form id="selfsign-finalize-form"
+                method="post"
+                action="{{ url_for('self_sign_finalize') }}">
+            <input type="hidden" name="temp_id" id="selfsign-temp-id">
+            <input type="hidden" name="rel_x" id="selfsign-rel-x">
+            <input type="hidden" name="rel_y" id="selfsign-rel-y">
+            <input type="hidden" name="rel_w" id="selfsign-rel-w">
+            <input type="hidden" name="page_index" id="selfsign-page-index">
+            <input type="hidden" name="apply_to" id="selfsign-apply-to">
+            <button type="submit" class="btn btn-primary">
+              Save Signed PDF
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>

@@ -1,0 +1,44 @@
+{# templates/partials/notifications.html #}
+{% include "partials/_components.html" %}
+
+<div class="welcome-block">
+  <div class="welcome-title">Notifications</div>
+  <div class="welcome-sub">Automatic updates about letters, queues and your account.</div>
+</div>
+
+<div class="status-shell">
+  <div class="status-panel-header">Recent Notifications</div>
+  <div class="status-panel-sub">New items are highlighted. Opening this page marks them as read.</div>
+  <div class="status-panel-body">
+    {% if items %}
+      <div class="table-scroll">
+      <table class="status-table">
+        <thead>
+          <tr>
+            <th style="width:170px;">Date &amp; Time</th>
+            <th>Message</th>
+            <th style="width:90px;">Letter</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for n in items %}
+            <tr{% if not n.is_read %} style="background:#f0fdf4; font-weight:500;"{% endif %}>
+              <td>{{ n.created_at|dt }}</td>
+              <td>{{ n.message }}</td>
+              <td style="text-align:center;">
+                {% if n.letter_id and user.role != 'moderator' %}
+                  <a href="{{ url_for('document_view', letter_id=n.letter_id) }}" class="view-link" data-modal="true">View</a>
+                {% elif n.letter_id %}
+                  <a href="{{ url_for('document_view', letter_id=n.letter_id) }}" class="view-link" data-modal="true">Details</a>
+                {% else %}<span class="muted">—</span>{% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    {% else %}
+      <div class="empty-state">No notifications yet.</div>
+    {% endif %}
+  </div>
+</div>

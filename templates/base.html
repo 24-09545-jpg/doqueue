@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}E-Sign Portal | Batangas State University{% endblock %}</title>
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <script>
+    // CSRF: add the token to every form POST and every same-origin fetch POST.
+    (function () {
+      var token = document.querySelector('meta[name="csrf-token"]').content;
+      window.CSRF_TOKEN = token;
+      document.addEventListener('submit', function (e) {
+        var f = e.target;
+        if (!f || (f.method || '').toLowerCase() !== 'post') return;
+        if (!f.querySelector('input[name="csrf_token"]')) {
+          var i = document.createElement('input');
+          i.type = 'hidden'; i.name = 'csrf_token'; i.value = token;
+          f.appendChild(i);
+        }
+      }, true);
+      var origFetch = window.fetch;
+      window.fetch = function (input, init) {
+        init = init || {};
+        var method = (init.method || 'GET').toUpperCase();
+        if (method !== 'GET' && method !== 'HEAD') {
+          var headers = new Headers(init.headers || {});
+          if (!headers.has('X-CSRFToken')) headers.set('X-CSRFToken', token);
+          init.headers = headers;
+        }
+        return origFetch.call(this, input, init);
+      };
+    })();
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary: #0066cc;
+      --primary-dark: #0052a3;
+      --primary-light: #e6f0ff;
+      --secondary: #00a86b;
+      --accent: #ff6b35;
+      --danger: #dc3545;
+      --warning: #ffc107;
+      --success: #28a745;
+      --info: #17a2b8;
+      --bg-light: #f8fafc;
+      --bg-lighter: #f1f5f9;
+      --bg-white: #ffffff;
+      --border: #e2e8f0;
+      --text-primary: #1e293b;
+      --text-secondary: #64748b;
+      --text-muted: #94a3b8;
+      --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+      --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+      --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.12);
+      --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+      --shadow-2xl: 0 25px 50px rgba(0, 0, 0, 0.2);
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-xl: 16px;
+      --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+      width: 100%;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-lighter);
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+
+    /* Header (only for logged-in pages) */
+    .header {
+      background: var(--bg-white);
+      border-bottom: 1px solid var(--border);
+      box-shadow: var(--shadow-xs);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(10px);
+    }
+
+    .header-content {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 0 32px;
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-logo-section {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      text-decoration: none;
+      color: inherit;
+      transition: opacity var(--transition);
+    }
+
+    .header-logo-section:hover {
+      opacity: 0.8;
+    }
+
+    /* ============================= */
+/* GLOBAL BUTTON STYLE SYSTEM    */
+/* (Green only — no blue)        */
+/* ============================= */
+
+.btn {
+  border: none;
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background 0.12s ease,
+              transform 0.08s ease,
+              box-shadow 0.12s ease,
+              border-color 0.12s ease;
+}
+
+/* PRIMARY — GREEN BUTTON */
+.btn-primary {
+  background: #16a34a;   /* green */
+  color: #ffffff;
+}
+.btn-primary:hover {
+  background: #15803d;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(22,163,74,0.25);
+}
+
+/* SECONDARY — OUTLINE BUTTON */
+.btn-secondary {
+  background: #ffffff;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+.btn-secondary:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+/* GHOST BUTTON — Minimal, subtle */
+.btn-ghost {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  color: #374151;
+}
+.btn-ghost:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+    .header-logo {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      border-radius: var(--radius-lg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: var(--bg-white);
+      font-size: 22px;
+      box-shadow: var(--shadow-md);
+    }
+
+    .header-text {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .header-text .title {
+      font-family: 'Poppins', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.4px;
+    }
+
+    .header-text .subtitle {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+
+    .header-nav {
+      display: flex;
+      gap: 32px;
+      align-items: center;
+    }
+
+    .header-nav a {
+      text-decoration: none;
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 500;
+      transition: color var(--transition);
+      position: relative;
+      padding-bottom: 2px;
+    }
+
+    .header-nav a:hover {
+      color: var(--primary);
+    }
+
+    .header-nav a::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background: var(--primary);
+      transition: width var(--transition);
+    }
+
+    .header-nav a:hover::after {
+      width: 100%;
+    }
+
+    .header-nav a.logout {
+      color: var(--danger);
+    }
+
+    .header-nav a.logout:hover {
+      color: #c82333;
+    }
+
+    .header-nav a.logout::after {
+      background: var(--danger);
+    }
+
+  /* Flash Messages – toast style */
+.flash-wrapper {
+  position: fixed;
+  top: 90px;              /* below header/banner */
+  right: 24px;
+  z-index: 2000;
+  max-width: 360px;
+}
+
+.flash-messages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.flash-messages li {
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  background: #fff3cd;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: var(--radius-md);
+  color: #856404;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: var(--shadow-sm);
+  animation: slideIn var(--transition);
+}
+
+/* success = green */
+.flash-messages li.success {
+  background: #d4edda;
+  border-left-color: var(--success);
+  color: #155724;
+}
+
+/* error = red */
+.flash-messages li.error {
+  background: #fde8e8;
+  border-left-color: var(--danger);
+  color: #721c24;
+}
+
+/* optional info style if you ever need it */
+.flash-messages li.info {
+  background: #e2f3ff;
+  border-left-color: var(--info);
+  color: #055160;
+}
+
+/* notification icon at the start of every pop-up message */
+.flash-messages li::before {
+  content: '';
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  background: url("{{ url_for('static', filename='img/icon/need.png') }}") center / contain no-repeat;
+}
+
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Main container for logged-in pages.
+       Auth pages (login/register) will override this in their own CSS. */
+    .container {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 0; /* important: no vertical padding to avoid extra scroll */
+    }
+
+    @media (max-width: 1024px) {
+      .header-content {
+        padding: 0 24px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .header-content {
+        padding: 0 16px;
+        height: 64px;
+      }
+
+      .header-logo {
+        width: 40px;
+        height: 40px;
+        font-size: 18px;
+      }
+
+      .header-text .title {
+        font-size: 14px;
+      }
+
+      .header-nav {
+        gap: 16px;
+        font-size: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    {% block content %}{% endblock %}
+  </div>
+
+  <!-- Toast-style flash messages -->
+  {% with messages = get_flashed_messages(with_categories=True) %}
+    {% if messages %}
+      <div class="flash-wrapper" id="flash-wrapper">
+        <ul class="flash-messages">
+          {% for category, m in messages %}
+            <li class="{{ category }}">{{ m }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <script>
+    // auto-hide flash after 4 seconds
+    setTimeout(function () {
+      const fw = document.getElementById('flash-wrapper');
+      if (fw) fw.style.opacity = '0';
+      setTimeout(() => fw && fw.remove(), 500);
+    }, 4000);
+    // Client-side helper to show flash-style messages (toast)
+    function showFlash(category, message, opts) {
+      opts = opts || {};
+      try {
+        let wrapper = document.getElementById('flash-wrapper');
+        if (!wrapper) {
+          wrapper = document.createElement('div');
+          wrapper.className = 'flash-wrapper';
+          wrapper.id = 'flash-wrapper';
+          const ul = document.createElement('ul');
+          ul.className = 'flash-messages';
+          wrapper.appendChild(ul);
+          document.body.appendChild(wrapper);
+        }
+
+        const list = wrapper.querySelector('.flash-messages');
+        const li = document.createElement('li');
+        li.className = category || 'info';
+        li.textContent = String(message || '').trim() || 'Notice';
+        if (typeof opts.onClick === 'function') {
+          li.style.cursor = 'pointer';
+          li.title = 'Click to open';
+          li.addEventListener('click', function () { opts.onClick(); li.remove(); });
+        }
+        list.appendChild(li);
+
+        // auto remove each message (default 4s)
+        setTimeout(() => {
+          li.style.opacity = '0';
+          setTimeout(() => {
+            li.remove();
+            // cleanup wrapper when empty
+            if (list.children.length === 0) {
+              wrapper.remove();
+            }
+          }, 500);
+        }, opts.duration || 4000);
+      } catch (e) {
+        console.warn('showFlash failed:', e);
+        // graceful fallback
+        alert(message);
+      }
+    }
+  </script>
+
+<script>
+  function setupSelfSign() {
+    // 1. Whether the user has a signature (true/false)
+    const hasSignature = JSON.parse('{{ (user and (user.signature_filename or user.signature_path)) | tojson | safe }}');
+
+    // 2. DOM refs
+    const uploadForm    = document.getElementById('selfsign-upload-form');
+    const fileInput     = document.getElementById('selfsign-document');
+
+    const modal         = document.getElementById('selfsign-modal');
+    const modalBackdrop = document.getElementById('selfsign-modal-backdrop');
+    const modalClose    = document.getElementById('selfsign-modal-close');
+    const modalCancel   = document.getElementById('selfsign-cancel-btn');
+
+    const pdfFrame      = document.getElementById('selfsign-pdf-frame');
+    const overlay       = document.getElementById('selfsign-overlay');
+    const sigImg        = document.getElementById('selfsign-signature-img');
+
+    const finalizeForm  = document.getElementById('selfsign-finalize-form');
+    const tempIdInput   = document.getElementById('selfsign-temp-id');
+    const relXInput     = document.getElementById('selfsign-rel-x');
+    const relYInput     = document.getElementById('selfsign-rel-y');
+    const applyToHidden = document.getElementById('selfsign-apply-to');
+    const applyRadios   = document.querySelectorAll('input[name="selfsign-apply-to-radio"]');
+
+    // if we’re not on the sign-yourself partial, do nothing
+    if (!uploadForm) return;
+
+    function openModal() {
+      if (modal) modal.classList.add('show');
+    }
+    function closeModal() {
+      if (modal) modal.classList.remove('show');
+    }
+
+    if (modalClose)  modalClose.addEventListener('click', closeModal);
+    if (modalCancel) modalCancel.addEventListener('click', closeModal);
+    if (modalBackdrop) modalBackdrop.addEventListener('click', closeModal);
+
+    // 3. Upload & Place Signature (AJAX, no redirect)
+    uploadForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      if (!hasSignature) {
+        if (window.showFlash) showFlash('error', 'Please upload your signature in the Settings tab first.');
+        return;
+      }
+
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) {
+        if (window.showFlash) showFlash('error', 'Please choose a PDF file first.');
+        return;
+      }
+      if (!file.name.toLowerCase().endsWith('.pdf')) {
+        if (window.showFlash) showFlash('error', 'Only PDF files (.pdf) are allowed.');
+        return;
+      }
+
+      const fd = new FormData();
+      fd.append('document', file);
+
+      fetch('{{ url_for("self_sign_temp_upload") }}', {
+        method: 'POST',
+        body: fd
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (!data.ok) {
+          if (window.showFlash) showFlash('error', data.error || 'Failed to upload document for self-sign.');
+          return;
+        }
+
+        pdfFrame.src      = data.pdf_url;
+        sigImg.src        = data.signature_url || '';
+        tempIdInput.value = data.temp_id;
+
+        // initial position
+        sigImg.style.left = '60%';
+        sigImg.style.top  = '70%';
+        sigImg.classList.remove('hidden');
+
+        relXInput.value = '';
+        relYInput.value = '';
+
+        applyToHidden.value = 'one';
+        applyRadios.forEach(r => { r.checked = (r.value === 'one'); });
+
+        openModal();
+      })
+      .catch(err => {
+        console.error(err);
+        if (window.showFlash) showFlash('error', 'Error uploading file for self-sign.');
+      });
+    });
+
+    // 4. Apply-to radios
+    applyRadios.forEach(radio => {
+      radio.addEventListener('change', function () {
+        if (this.checked) {
+          applyToHidden.value = this.value;
+        }
+      });
+    });
+
+    // 5. Dragging the signature image
+    let isDragging = false;
+    let startX = 0, startY = 0;
+    let origLeft = 0, origTop = 0;
+
+    function onMouseDown(e) {
+      if (e.button !== 0) return;
+      isDragging = true;
+
+      const rect = sigImg.getBoundingClientRect();
+      startX = e.clientX;
+      startY = e.clientY;
+      origLeft = rect.left;
+      origTop  = rect.top;
+
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+      e.preventDefault();
+    }
+
+    function onMouseMove(e) {
+      if (!isDragging) return;
+
+      const overlayRect = overlay.getBoundingClientRect();
+      let deltaX = e.clientX - startX;
+      let deltaY = e.clientY - startY;
+
+      let newLeft = origLeft + deltaX;
+      let newTop  = origTop  + deltaY;
+
+      const sigRect = sigImg.getBoundingClientRect();
+      const width   = sigRect.width;
+      const height  = sigRect.height;
+
+      const minLeft = overlayRect.left;
+      const maxLeft = overlayRect.right - width;
+      const minTop  = overlayRect.top;
+      const maxTop  = overlayRect.bottom - height;
+
+      if (newLeft < minLeft) newLeft = minLeft;
+      if (newLeft > maxLeft) newLeft = maxLeft;
+      if (newTop  < minTop)  newTop  = minTop;
+      if (newTop  > maxTop)  newTop  = maxTop;
+
+      const relLeft = newLeft - overlayRect.left;
+      const relTop  = newTop  - overlayRect.top;
+
+      sigImg.style.left = relLeft + 'px';
+      sigImg.style.top  = relTop  + 'px';
+    }
+
+    function onMouseUp() {
+      if (!isDragging) return;
+      isDragging = false;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+
+      const overlayRect = overlay.getBoundingClientRect();
+      const sigRect = sigImg.getBoundingClientRect();
+
+      const centerX = (sigRect.left + sigRect.width / 2) - overlayRect.left;
+      const centerY = (sigRect.top  + sigRect.height / 2) - overlayRect.top;
+
+      const relX = centerX / overlayRect.width;
+      const relY = centerY / overlayRect.height;
+
+      relXInput.value = relX.toFixed(4);
+      relYInput.value = relY.toFixed(4);
+    }
+
+    if (sigImg) {
+      sigImg.addEventListener('mousedown', onMouseDown);
+    }
+
+    // 6. Finalize submit – compute rel_x/rel_y if not set
+    if (finalizeForm) {
+      finalizeForm.addEventListener('submit', function (e) {
+        if (!tempIdInput.value) {
+          e.preventDefault();
+          if (window.showFlash) showFlash('error', 'Please upload a document first.');
+          return;
+        }
+
+        if (!relXInput.value || !relYInput.value) {
+          const overlayRect = overlay.getBoundingClientRect();
+          const sigRect = sigImg.getBoundingClientRect();
+          const centerX = (sigRect.left + sigRect.width / 2) - overlayRect.left;
+          const centerY = (sigRect.top  + sigRect.height / 2) - overlayRect.top;
+          const relX = centerX / overlayRect.width;
+          const relY = centerY / overlayRect.height;
+          relXInput.value = relX.toFixed(4);
+          relYInput.value = relY.toFixed(4);
+        }
+
+        if (!applyToHidden.value) {
+          applyToHidden.value = 'one';
+        }
+      });
+    }
+  }
+
+  // If user ever lands directly on /p/sign-yourself as a full page
+  document.addEventListener('DOMContentLoaded', () => {
+    setupSelfSign();
+  });
+  
+</script>
+
+
+</body>
+</html>

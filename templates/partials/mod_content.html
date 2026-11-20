@@ -1,0 +1,38 @@
+{# Moderator Portal – website content #}
+{% include "partials/_components.html" %}
+
+<div class="welcome-block">
+  <div class="welcome-title">Website Content</div>
+  <div class="welcome-sub">Edit what is shown on the website without changing the source code. Office descriptions and contact details are edited under Offices.</div>
+</div>
+
+<form method="post" action="{{ url_for('moderator.content_save') }}">
+  <div class="panel-grid">
+    <div class="panel">
+      <div class="panel-title">Announcements &amp; Instructions</div>
+      <div class="panel-sub">Leave a field empty to hide it.</div>
+      <div class="form-row">
+        <label class="form-label">Dashboard announcement</label>
+        <textarea class="form-textarea" name="announcement" rows="3" placeholder="Shown at the top of the User and Admin portal dashboards">{{ content.announcement }}</textarea>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Letter submission instructions</label>
+        <textarea class="form-textarea" name="submission_instructions" rows="3">{{ content.submission_instructions }}</textarea>
+        <div class="hint">Shown on the Request Signature page.</div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Login page notice</label>
+        <textarea class="form-textarea" name="login_notice" rows="2">{{ content.login_notice }}</textarea>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Contacts Page</div>
+      <div class="panel-sub">One contact per line in the form <code>Name | email</code>.</div>
+      <div class="form-row"><label class="form-label">Title</label><input class="form-input" name="contacts_title" value="{{ content.contacts_title }}"></div>
+      <div class="form-row"><label class="form-label">Introduction</label><textarea class="form-textarea" name="contacts_intro" rows="2">{{ content.contacts_intro }}</textarea></div>
+      <div class="form-row"><label class="form-label">Contacts</label><textarea class="form-textarea" name="contacts_rows" rows="10" style="font-family:monospace; font-size:12px;">{{ content.contacts_rows }}</textarea></div>
+    </div>
+  </div>
+  <div style="margin-top:16px;"><button type="submit" class="btn btn-primary">Save Website Content</button></div>
+</form>

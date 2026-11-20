@@ -1,0 +1,83 @@
+{# templates/partials/admin_history.html – Admin Portal: office signing history #}
+{% import "partials/_macros.html" as m with context %}
+{% include "partials/_components.html" %}
+
+<div class="welcome-block">
+  <div class="welcome-title">Signing History{% if office %} &middot; {{ office.name }}{% endif %}</div>
+  <div class="welcome-sub">Every letter your office has signed, returned or disapproved.</div>
+</div>
+
+<div class="status-shell">
+  <div class="status-panel-header">Completed Tasks</div>
+  <div class="status-panel-sub">Most recent first.</div>
+  <div class="status-panel-body">
+    {% if history %}
+      <div class="status-filters">
+        <input id="history-search" class="status-filter-input" type="text" placeholder="Search by organization, title or tracking no.…">
+        <select id="history-filter" class="status-filter-select">
+          <option value="">All decisions</option>
+          <option value="completed">Approved &amp; Signed</option>
+          <option value="returned">Returned for Revision</option>
+          <option value="disapproved">Disapproved</option>
+        </select>
+      </div>
+      <div class="table-scroll">
+      <table class="status-table" id="history-table">
+        <thead>
+          <tr>
+            <th style="width:60px;">Sr No.</th>
+            <th>Organization</th>
+            <th>Letter Title</th>
+            <th style="width:170px;">Your Decision</th>
+            <th>By</th>
+            <th>Date</th>
+            <th style="width:160px;">Letter Now</th>
+            <th>Tracking No.</th>
+            <th style="width:80px;">Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for h in history %}
+            <tr class="history-row" data-status="{{ h.step_status }}"
+                data-text="{{ (h.organization_name ~ ' ' ~ h.title ~ ' ' ~ (h.tracking_number or ''))|lower }}">
+              <td style="text-align:center;">{{ loop.index }}</td>
+              <td>{{ h.organization_name }}</td>
+              <td>{{ h.title }}{% if h.cycle != h.current_cycle %}<div class="small">Earlier attempt (letter was later resubmitted)</div>{% endif %}</td>
+              <td>{{ m.step_pill(h.step_status) }}</td>
+              <td>{{ h.acted_by_name or '—' }}</td>
+              <td>{{ h.acted_at|dt }}</td>
+              <td>{{ m.status_pill(h.letter_status) }}</td>
+              <td>{{ h.tracking_number or '—' }}</td>
+              <td style="text-align:center;">
+                {% if h.cycle == h.current_cycle %}
+                  <a href="{{ url_for('document_view', letter_id=h.letter_id) }}" class="view-link" data-modal="true">View</a>
+                  {% if h.letter_status == 'fully_signed' %}<br><a href="{{ url_for('document_signed_download', doc_id=h.letter_id) }}" class="view-link">Download</a>{% endif %}
+                {% else %}<span class="muted">—</span>{% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    {% else %}
+      <div class="empty-state">No signing activity yet.</div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+(function () {
+  const search = document.getElementById('history-search');
+  const filter = document.getElementById('history-filter');
+  if (!search || !filter) return;
+  function apply() {
+    const q = search.value.trim().toLowerCase();
+    document.querySelectorAll('#history-table .history-row').forEach(function (row) {
+      const ok = (!filter.value || row.dataset.status === filter.value) && (!q || row.dataset.text.includes(q));
+      row.style.display = ok ? '' : 'none';
+    });
+  }
+  search.addEventListener('input', apply);
+  filter.addEventListener('change', apply);
+})();
+</script>

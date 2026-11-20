@@ -1,0 +1,627 @@
+{% extends "base.html" %}
+{% block title %}Dashboard | E-Sign Portal{% endblock %}
+{% block content %}
+<style>
+  /* Override base container so dashboard can be full-width */
+  .container {
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  .dashboard-page {
+    background: #e5e7eb;
+    min-height: 100vh;
+  }
+
+  /* Full-page layout: sidebar + main */
+  .dashboard-shell {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    width: 100%;
+    min-height: 100vh;
+  }
+
+  /* ───── SIDEBAR ───── */
+  .sidebar {
+    background: #f9fafb;
+    border-right: 1px solid #e5e7eb;
+    color: #111827;
+    display: flex;
+    flex-direction: column;
+    padding: 18px 16px 16px;
+  }
+
+  .sidebar-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+
+  .sidebar-title {
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.2;
+    color: #111827;
+  }
+
+  .sidebar-user {
+    font-size: 11px;
+    color: #6b7280;
+    margin-top: 2px;
+  }
+
+  .sidebar-nav {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .side-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    color: #374151;
+    text-decoration: none;
+    font-size: 14px;
+    transition: background 0.15s ease, color 0.15s ease, transform 0.08s ease;
+    cursor: pointer;
+  }
+
+  .side-link img {
+    width: 20px;
+    height: 20px;
+    display: block;
+  }
+
+  .side-link:hover {
+    background: #e5f9f0;
+    color: #065f46;
+    transform: translateX(1px);
+  }
+
+  .side-link.active {
+    background: #dcfce7;
+    color: #065f46;
+    font-weight: 600;
+  }
+
+  .side-badge {
+    margin-left: auto;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #dc2626;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .sidebar-footer {
+    margin-top: auto;
+    font-size: 11px;
+    color: #9ca3af;
+    border-top: 1px solid #e5e7eb;
+    padding-top: 8px;
+  }
+
+  /* ───── MAIN PANEL ───── */
+  .dash-main {
+    display: flex;
+    flex-direction: column;
+    background: #f3f4f6;
+  }
+
+  .dash-topbar {
+    background: #353A40;
+    color: #111827;
+    padding: 10px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .dash-topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+  }
+
+  .dash-topbar-left span {
+    font-weight: 410;
+    color: #ffffff;
+  }
+
+  .dash-topbar-right {
+    font-size: 12px;
+    color: #fbfdff;
+    font-weight: 300;
+  }
+
+  .dash-header-white {
+    background: #ffffff;
+    padding: 9px 24px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+  }
+
+  .dash-content {
+    padding: 20px 24px 24px;
+  }
+
+  .dash-clock {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+  }
+
+  .clock-date {
+    font-size: 13px;
+  }
+
+  .clock-time {
+    font-size: 20px;
+    font-weight: 400;
+    letter-spacing: 0.03em;
+  }
+
+  .signout-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 999px;
+    background: #f9fafb;
+    color: #374151;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 14px;
+    transition: background 0.15s ease, transform 0.08s ease;
+  }
+
+  .signout-btn:hover {
+    background: #e5e7eb;
+    transform: translateY(-1px);
+  }
+
+  .signout-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    border: 2px solid #9ca3af;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    color: #6b7280;
+    background: #f3f4f6;
+  }
+
+  /* Page-specific stuff (same as before) is inside partials */
+
+  /* ───── RESPONSIVE ───── */
+  @media (max-width: 1024px) {
+    .dashboard-shell {
+      grid-template-columns: 1fr;
+    }
+    .sidebar {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      border-right: none;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .sidebar-nav {
+      flex-direction: row;
+      gap: 6px;
+    }
+    .sidebar-footer {
+      display: none;
+    }
+  }
+</style>
+
+<div class="dashboard-page">
+  <div class="dashboard-shell">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div>
+        <div class="sidebar-header">
+          <div>
+            <div class="sidebar-title">{{ user.name }}</div>
+            <div class="sidebar-user">{{ user.email }}</div>
+            <div class="sidebar-user">
+              {{ portal_name }}{% if user.office_name %} &middot; {{ user.office_name }}{% elif user.organization_name %} &middot; {{ user.organization_name }}{% endif %}
+            </div>
+          </div>
+        </div>
+
+<nav class="sidebar-nav">
+  {% for item in nav_items %}
+  <a class="side-link{% if item.page == active_page %} active{% endif %}" data-page="{{ item.page }}">
+    <img src="{{ url_for('static', filename=item.icon) }}" alt="{{ item.page }}">
+    <span>{{ item.label }}</span>
+    {% if item.page == 'notifications' %}
+      <span class="side-badge" id="notif-badge"{% if not unread_notifications %} hidden{% endif %}>{{ unread_notifications }}</span>
+    {% endif %}
+  </a>
+  {% endfor %}
+</nav>
+
+      </div>
+
+      <div class="sidebar-footer">
+        © Batangas State University
+      </div>
+    </aside>
+
+    <!-- MAIN PANEL -->
+    <main class="dash-main">
+      <div class="dash-topbar">
+        <div class="dash-topbar-left">
+          <img src="{{ url_for('static', filename='img/bsu_logo.png') }}" alt="BSU Logo" style="width:40px; height:36px;">
+          <span>Batangas State University</span>
+        </div>
+        <div class="dash-topbar-right">
+          <div class="dash-clock">
+            <div id="clock-date" class="clock-date"></div>
+            <div id="clock-time" class="clock-time"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dash-header-white">
+        <a href="{{ url_for('logout') }}" class="signout-btn">
+          <span class="signout-icon">⏻</span>
+          <span>Sign-out</span>
+        </a>
+      </div>
+
+      <div class="dash-content">
+        <!-- THIS IS WHERE PARTIALS LOAD -->
+        <div id="content-area">
+          {% include initial_partial %}
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- Letter details overlay (filled by [data-modal] links) -->
+<div id="doc-modal" style="display:none;">
+  <div id="doc-modal-body"></div>
+</div>
+
+<script src="{{ url_for('static', filename='js/sig-placer.js') }}"></script>
+<script>
+  function updateClock() {
+    const dateEl = document.getElementById('clock-date');
+    const timeEl = document.getElementById('clock-time');
+    if (!dateEl || !timeEl) return;
+
+    const now = new Date();
+
+    const dateStr = now.toLocaleDateString(undefined, {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+
+    const timeStr = now.toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    });
+
+    dateEl.textContent = dateStr;
+    timeEl.textContent = timeStr;
+  }
+
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // --- SPA-like navigation for sidebar ---
+  const routes = {
+    {% for item in nav_items %}{{ item.page|tojson }}: {{ item.url|tojson }},{% endfor %}
+  };
+  let currentPage = {{ active_page|tojson }};
+
+  function initRequestSignatureUI() {
+    // Priority buttons
+    const priorityField = document.getElementById('priority-field');
+    const buttons = document.querySelectorAll('.priority-btn');
+    if (priorityField && buttons.length) {
+      const activeValue = priorityField.value || 'low';
+      buttons.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.value === activeValue);
+        btn.addEventListener('click', () => {
+          priorityField.value = btn.dataset.value;
+          buttons.forEach(b => b.classList.toggle('active', b === btn));
+        });
+      });
+    }
+
+    // ---------- SIGNER CHIPS INITIALIZER (when partial is loaded via AJAX) ----------
+    (function initSignerChips() {
+      const allowedDomain = '@g.batstate-u.edu.ph';
+      const listEl = document.getElementById('emails-list');
+      const inputEl = document.getElementById('email-field');
+      const addBtn = document.getElementById('add-email-btn');
+      const hiddenEl = document.getElementById('signer_emails_hidden');
+      const formEl = document.querySelector('#content-area form') || document.querySelector('form');
+
+      if (!listEl || !inputEl || !addBtn || !hiddenEl) return;
+
+      // prevent double-init
+      if (listEl.dataset.chipsInit) return;
+      listEl.dataset.chipsInit = '1';
+
+      let emails = [];
+      const initial = (hiddenEl.value || '').split(/[,\s]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
+      emails = Array.from(new Set(initial));
+
+      function syncHidden() { hiddenEl.value = emails.join(','); }
+
+      function renderChips() {
+        listEl.innerHTML = '';
+        emails.forEach(email => {
+          const chip = document.createElement('span'); chip.className = 'email-chip';
+          const txt = document.createElement('span'); txt.textContent = email; chip.appendChild(txt);
+          const btn = document.createElement('button'); btn.type = 'button'; btn.textContent = '×'; btn.addEventListener('click', () => { const i = emails.indexOf(email); if (i>-1) { emails.splice(i,1); renderChips(); }});
+          chip.appendChild(btn); listEl.appendChild(chip);
+        });
+        syncHidden();
+      }
+
+      function addEmailFromInput() {
+        const parts = (inputEl.value||'').split(/[,;\s]+/).map(s=>s.trim().toLowerCase()).filter(Boolean);
+        let added = false;
+        parts.forEach(p => {
+          if (p && p.endsWith(allowedDomain) && !emails.includes(p)) { emails.push(p); added = true; }
+          else if (p && !p.endsWith(allowedDomain)) { /* ignore invalid silently here */ }
+        });
+        if (added) renderChips();
+        inputEl.value = '';
+      }
+
+      addBtn.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); addEmailFromInput(); });
+      inputEl.addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); addEmailFromInput(); } });
+
+      if (formEl) {
+        formEl.addEventListener('submit', function(e){ 
+          const pending = (inputEl.value||'').trim();
+          if (pending) { 
+            e.preventDefault(); e.stopPropagation(); addEmailFromInput(); setTimeout(()=>{ const btn=formEl.querySelector('button[type="submit"]'); if(btn) btn.focus(); },30); 
+            return;
+          }
+
+          // Client-side validation to mirror server rules
+          const titleEl = document.getElementById('title');
+          const expiryEl = document.getElementById('expiry_date');
+          const fileEl = document.getElementById('document');
+          const prev = document.getElementById('client-signer-error'); if (prev) prev.remove();
+
+          if (!emails || emails.length === 0) {
+            e.preventDefault(); e.stopPropagation();
+            const wrapper = listEl.closest('.signer-wrapper') || listEl.parentNode;
+            const err = document.createElement('div'); err.id = 'client-signer-error'; err.className = 'field-error'; err.textContent = 'Please add at least one signer.';
+            wrapper.appendChild(err);
+            inputEl.focus();
+            return;
+          }
+          if (!titleEl || !titleEl.value.trim()) { e.preventDefault(); e.stopPropagation(); if (titleEl) titleEl.focus(); return; }
+          if (!expiryEl || !expiryEl.value.trim()) { e.preventDefault(); e.stopPropagation(); if (expiryEl) expiryEl.focus(); return; }
+          if (!fileEl || !fileEl.files || fileEl.files.length === 0) { e.preventDefault(); e.stopPropagation(); if (fileEl) fileEl.focus(); return; }
+        }, { passive: false });
+      }
+
+      inputEl.addEventListener('paste', function(){ setTimeout(()=>{ const txt = inputEl.value||''; const parts = txt.split(/[\s,;]+/).map(s=>s.trim().toLowerCase()).filter(Boolean); let added=false; parts.forEach(p=>{ if (p.endsWith(allowedDomain) && !emails.includes(p)) { emails.push(p); added=true; } }); inputEl.value=''; if(added) renderChips(); },10); });
+
+      renderChips();
+    })();
+
+    // PDF preview
+    const fileInput = document.getElementById('document-field');
+    const previewFrame = document.getElementById('pdf-preview');
+    const previewWrap = document.getElementById('pdf-preview-wrap');
+
+    if (fileInput && previewFrame && previewWrap) {
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file && file.type === 'application/pdf') {
+          const url = URL.createObjectURL(file);
+          previewFrame.src = url;
+          previewWrap.style.display = 'block';
+        } else {
+          previewFrame.src = '';
+          previewWrap.style.display = 'none';
+        }
+      });
+    }
+  }
+
+  function executeInlineScripts(container) {
+  const scripts = container.querySelectorAll("script");
+  scripts.forEach(oldScript => {
+    const newScript = document.createElement("script");
+    if (oldScript.src) {
+      newScript.src = oldScript.src;
+    } else {
+      newScript.textContent = oldScript.textContent;
+    }
+    document.body.appendChild(newScript);
+  });
+}
+
+  function loadPage(url) {
+    if (!url) return;
+    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(res => res.text())
+      .then(html => {
+        const container = document.getElementById('content-area');
+        if (container) {
+          container.innerHTML = html;
+          // Execute inline scripts from loaded partials (e.g., Sign Yourself)
+          executeInlineScripts(container);
+          // Re-wire known partial-specific initializers
+          initRequestSignatureUI();
+        }
+      })
+      .catch(err => console.error('Error loading partial:', err));
+  }
+
+
+  document.querySelectorAll('.side-link[data-page]').forEach(link => {
+    link.addEventListener('click', function (e) {
+      e.preventDefault();
+      const page = this.dataset.page;
+      const url = routes[page];
+      if (!url) return;
+
+      document.querySelectorAll('.side-link').forEach(l => l.classList.remove('active'));
+      this.classList.add('active');
+
+      currentPage = page;
+      if (history.replaceState) history.replaceState(null, '', '#' + page);
+      loadPage(url);
+      if (page === 'notifications') setBadge(0);
+    });
+  });
+
+  // Reload the current tab (used after actions and by auto-refresh)
+  window.reloadCurrentPage = function () {
+    const url = routes[currentPage];
+    if (url) loadPage(url);
+  };
+
+  // Load a URL (with query string) into the content area, e.g. filters on moderator pages
+  window.loadIntoContent = function (url) { loadPage(url); };
+
+  // Open the tab named in the URL hash (e.g. after a form redirect to /dashboard#settings)
+  (function openHashTab() {
+    const page = (location.hash || '').replace('#', '');
+    if (page && page !== currentPage && routes[page]) {
+      const link = document.querySelector('.side-link[data-page="' + page + '"]');
+      if (link) link.click();
+    }
+  })();
+
+  // ---------- Letter details overlay ----------
+  window.openDocModal = function (url) {
+    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(res => {
+        if (!res.ok) throw new Error(res.status === 404 ? 'This letter is not available to you.' : 'Unable to open the letter.');
+        return res.text();
+      })
+      .then(html => {
+        const shell = document.getElementById('doc-modal');
+        const body = document.getElementById('doc-modal-body');
+        body.innerHTML = html;
+        shell.style.display = '';
+        executeInlineScripts(body);
+      })
+      .catch(err => { if (window.showFlash) showFlash('error', err.message); });
+  };
+  window.closeDocModal = function (refresh) {
+    const shell = document.getElementById('doc-modal');
+    const body = document.getElementById('doc-modal-body');
+    if (body) body.innerHTML = '';
+    if (shell) shell.style.display = 'none';
+    if (refresh) window.reloadCurrentPage();
+  };
+  document.addEventListener('click', function (e) {
+    const link = e.target.closest('[data-modal="true"]');
+    if (!link) return;
+    e.preventDefault();
+    window.openDocModal(link.getAttribute('href'));
+  });
+
+  // ---------- Notifications badge + automatic refresh ----------
+  function setBadge(n) {
+    const b = document.getElementById('notif-badge');
+    if (!b) return;
+    b.textContent = n;
+    b.hidden = !n;
+  }
+  let lastStamp = null;
+  let lastNotif = null;          // newest notification id this page has already shown
+  const baseTitle = document.title;
+  const AUTO_REFRESH_PAGES = ['dashboard', 'history', 'letters'];
+  const SIGN_KINDS = ['queue', 'waiting_signature'];
+
+  function openNotification(n) {
+    if (n.letter_id && window.openDocModal) {
+      window.openDocModal("{{ url_for('document_view', letter_id=0) }}".replace(/0$/, n.letter_id));
+    } else {
+      const link = document.querySelector('.side-link[data-page="notifications"]');
+      if (link) link.click();
+    }
+  }
+
+  function popNotifications(data) {
+    if (lastNotif === null) {
+      // first check after the page opens / after login: one reminder
+      if (data.unread_to_sign > 0) {
+        showFlash('info', data.unread_to_sign === 1
+          ? 'You have a new letter waiting for your signature.'
+          : 'You have ' + data.unread_to_sign + ' new letters waiting for your signature.',
+          { duration: 9000, onClick: () => { const l = document.querySelector('.side-link[data-page="dashboard"]'); if (l) l.click(); } });
+      } else if (data.unread > 0) {
+        showFlash('info', 'You have ' + data.unread + ' unread notification' + (data.unread === 1 ? '' : 's') + '.',
+          { duration: 7000, onClick: () => { const l = document.querySelector('.side-link[data-page="notifications"]'); if (l) l.click(); } });
+      }
+    } else {
+      // something new arrived while the page was open: pop each one up
+      (data.new || []).forEach(n => {
+        const toSign = SIGN_KINDS.includes(n.kind);
+        showFlash(toSign ? 'success' : 'info', (toSign ? 'Letter to sign: ' : '') + n.message,
+                  { duration: toSign ? 12000 : 8000, onClick: () => openNotification(n) });
+      });
+    }
+    lastNotif = data.last_notification;
+    document.title = data.unread ? '(' + data.unread + ') ' + baseTitle : baseTitle;
+  }
+
+  function pulse() {
+    const url = "{{ url_for('pulse') }}" + (lastNotif === null ? '' : '?since=' + lastNotif);
+    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data || !data.ok) return;
+        if (currentPage !== 'notifications') setBadge(data.unread);
+        popNotifications(data);
+        if (lastStamp !== null && data.stamp !== lastStamp) {
+          const modalOpen = document.getElementById('doc-modal').style.display !== 'none';
+          const active = document.activeElement;
+          const typing = active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName);
+          if (!modalOpen && !typing && AUTO_REFRESH_PAGES.includes(currentPage)) {
+            window.reloadCurrentPage();
+          }
+        }
+        lastStamp = data.stamp;
+      })
+      .catch(() => {});
+  }
+  pulse();
+  setInterval(pulse, 15000);
+
+  // In case the initial content is the request signature form (it won't hurt if it's not)
+  initRequestSignatureUI();
+</script>
+
+
+{% endblock %}
