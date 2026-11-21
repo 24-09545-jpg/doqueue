@@ -16,8 +16,8 @@ from models import find_user_by_id
 
 PORTALS = {
     "user": {"name": "User Portal", "login": "login", "home": "dashboard"},
-    "office": {"name": "Admin Portal", "login": "admin.login", "home": "admin.dashboard"},
-    "moderator": {"name": "Moderator Portal", "login": "moderator.login", "home": "moderator.dashboard"},
+    "office": {"name": "Signatory Portal", "login": "admin.login", "home": "admin.dashboard"},
+    "moderator": {"name": "Admin Portal", "login": "moderator.login", "home": "moderator.dashboard"},
 }
 
 

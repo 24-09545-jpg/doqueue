@@ -208,16 +208,10 @@
           <button type="submit" class="submit-btn">Sign In</button>
         </form>
 
-        {% if not portal_role or portal_role == 'user' %}
-        <div class="login-footer">
-          Don't have an account?
-          <a href="{{ url_for('register') }}">Click here</a>
-        </div>
-        {% endif %}
         <div class="login-footer" style="font-size:12px; margin-top:10px;">
           {% if portal_role != 'user' %}<a href="{{ url_for('login') }}">User Portal</a>{% endif %}
-          {% if portal_role != 'office' %}{% if portal_role != 'user' %} &middot; {% endif %}<a href="{{ url_for('admin.login') }}">Admin Portal (Signatory Offices)</a>{% endif %}
-          {% if portal_role != 'moderator' %} &middot; <a href="{{ url_for('moderator.login') }}">Moderator Portal</a>{% endif %}
+          {% if portal_role != 'office' %}{% if portal_role != 'user' %} &middot; {% endif %}<a href="{{ url_for('admin.login') }}">Signatory Portal</a>{% endif %}
+          {% if portal_role != 'moderator' %} &middot; <a href="{{ url_for('moderator.login') }}">Admin Portal</a>{% endif %}
         </div>
       </div>
     </div>

@@ -113,10 +113,12 @@ def test_full_workflow(env):
     assert r.status_code == 302
     assert [h["office_id"] for h in q("SELECT office_id FROM hierarchy_steps ORDER BY step_order")] == [a_id, b_id]
 
-    # ── organization registers & submits
+    # ── moderator issues the organization account; organization signs in & submits
+    r = mod.post("/moderator/accounts/save", {"name": "Org User", "email": "org" + DOMAIN, "role": "user",
+                                              "password": "password1", "organization": "CpE Org"})
+    assert r.status_code == 302
     org = Client(env)
-    r = org.post("/register", {"email": "org" + DOMAIN, "name": "Org User", "organization": "CpE Org",
-                               "password": "password1"})
+    r = org.login("/login", "org" + DOMAIN, "password1")
     assert r.status_code == 302
     r = org.post("/upload-document", {"title": "Event Letter", "expiry_date": FUTURE, "note": "pls", "office_ids": route(),
                                       "document": (make_pdf(), "letter.pdf")})
@@ -125,11 +127,13 @@ def test_full_workflow(env):
     lid = letter["id"]
     assert letter["status"] == "pending"
 
-    # a second person joining the same org needs approval (cannot read its letters right away)
+    # self sign-up is closed: /register creates nothing and sends people to the login page
     other = Client(env)
-    other.post("/register", {"email": "intruder" + DOMAIN, "name": "X", "organization": "cpe org",
-                             "password": "password1"})
-    assert other.get("/dashboard").status_code == 302  # not logged in / inactive
+    r = other.post("/register", {"email": "intruder" + DOMAIN, "name": "X", "organization": "cpe org",
+                                 "password": "password1"})
+    assert r.status_code == 302 and "/login" in r.headers["Location"]
+    assert not q("SELECT id FROM users WHERE email = ?", ("intruder" + DOMAIN,))
+    assert b"Click here" not in other.get("/login").data
 
     # ── wrong portal is rejected
     bad = Client(env)
@@ -362,9 +366,12 @@ def test_organization_deletes_request(env):
     assert b"Delete Request" in org.get(f"/p/document/{lid}").data
 
     # another organization's account cannot delete it
+    mod = Client(env)
+    mod.login("/moderator/login", "mod" + DOMAIN, "modpass123")
+    mod.post("/moderator/accounts/save", {"name": "O", "email": "other" + DOMAIN, "role": "user",
+                                          "password": "password1", "organization": "Other Org"})
     other = Client(env)
-    other.post("/register", {"email": "other" + DOMAIN, "name": "O", "organization": "Other Org",
-                             "password": "password1"})
+    other.login("/login", "other" + DOMAIN, "password1")
     r = other.post(f"/document/{lid}/delete", ajax=True)
     assert r.status_code == 400
     assert q("SELECT is_withdrawn FROM letters WHERE id = ?", (lid,))[0]["is_withdrawn"] == 0

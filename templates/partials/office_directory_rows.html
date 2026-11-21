@@ -16,12 +16,12 @@
         <span class="muted">Not assigned</span>
       {% endif %}
     </td>
-    <td>
+    <td style="text-align:center;">
       {% if o.contact_email %}<div>{{ o.contact_email }}</div>{% endif %}
       {% if o.contact_phone %}<div class="small">{{ o.contact_phone }}</div>{% endif %}
       {% if not o.contact_email and not o.contact_phone %}<span class="muted">—</span>{% endif %}
     </td>
-    <td>
+    <td style="text-align:center;">
       {{ m.status_pill(o.availability_key, o.availability) }}
       {% if o.availability_note %}<div class="small">{{ o.availability_note }}</div>{% endif %}
       {% if o.availability_updated_at %}<div class="small">Updated {{ o.availability_updated_at|dt }}</div>{% endif %}

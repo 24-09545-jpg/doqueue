@@ -9,7 +9,7 @@
 
 <div class="panel">
   <div class="panel-title">Create Account</div>
-  <div class="panel-sub">Signatory office accounts log in through the Admin Portal; moderators through the Moderator Portal.</div>
+  <div class="panel-sub">Signatory office accounts log in through the Signatory Portal; moderators through the Admin Portal.</div>
   <form method="post" action="{{ url_for('moderator.account_save') }}" id="new-account-form">
     <div class="form-grid">
       <div class="form-row"><label class="form-label">Full name *</label><input class="form-input" name="name" required></div>
@@ -17,7 +17,7 @@
       <div class="form-row">
         <label class="form-label">Role *</label>
         <select class="form-select js-role" name="role">
-          <option value="office">Signatory office (Admin Portal)</option>
+          <option value="office">Signatory office (Signatory Portal)</option>
           <option value="user">Organization (User Portal)</option>
           <option value="moderator">Moderator</option>
         </select>

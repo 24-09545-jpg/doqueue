@@ -47,7 +47,7 @@ def main():
     print("Demo data ready (password for all demo accounts: demo1234)")
     print("  User Portal  /login        ", org_email)
     for order, name, email in rows:
-        print(f"  Admin Portal /admin/login   {order}. {name:<48} {email}")
+        print(f"  Signatory Portal /admin/login   {order}. {name:<48} {email}")
 
 
 if __name__ == "__main__":

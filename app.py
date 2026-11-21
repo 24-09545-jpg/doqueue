@@ -198,55 +198,9 @@ def portal_login(role):
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
-    if request.method == "POST":
-        email = request.form.get("email", "").strip().lower()
-        name = request.form.get("name", "").strip()
-        org_name = request.form.get("organization", "").strip()
-        password = request.form.get("password", "")
-
-        if len(password) < 8:
-            flash("Password must be at least 8 characters long.", "error")
-            return redirect(url_for("register"))
-        if not email.endswith(ALLOWED_DOMAIN):
-            flash(f"Registration requires a school email ({ALLOWED_DOMAIN}).", "error")
-            return redirect(url_for("register"))
-        if not name or not org_name:
-            flash("Name and organization are required.", "error")
-            return redirect(url_for("register"))
-        if find_user_by_email(email):
-            flash("Email already used.", "error")
-            return redirect(url_for("register"))
-
-        org = find_org_by_name(org_name)
-        if org and not org["is_active"]:
-            flash("This organization is currently deactivated. Please contact the DSA.", "error")
-            return redirect(url_for("register"))
-        # Joining an EXISTING organization needs moderator approval so nobody can read
-        # another organization's letters just by typing its name.
-        needs_approval = org is not None
-        org_id = org["id"] if org else create_org(org_name, contact_email=email)
-        user_id = create_user(email, password, name, "user", organization_id=org_id,
-                              is_active=0 if needs_approval else 1)
-        with transaction():
-            new_user = find_user_by_id(user_id)
-            workflow.log_activity(new_user, "account_registered",
-                                  f"Registered for organization '{org_name}'"
-                                  + (" (pending approval)" if needs_approval else ""))
-            if needs_approval:
-                workflow.notify(moderator_ids(),
-                                f"{name} ({email}) requested to join '{org_name}'. Approve in Accounts.",
-                                "account")
-        if needs_approval:
-            flash("Account created. Because this organization already exists, a DSA moderator "
-                  "must approve your account before you can sign in.", "success")
-            return redirect(url_for("login"))
-
-        session.clear()
-        session["user_id"] = user_id
-        session["role"] = "user"
-        flash("Registration successful! Welcome to your dashboard.", "success")
-        return redirect(url_for("dashboard"))
-    return render_template("register.html")
+    # Accounts are issued by the DSA moderators (Admin Portal > Accounts); no self sign-up.
+    flash("Accounts are created by the DSA. Please contact the DSA to request an account.", "error")
+    return redirect(url_for("login"))
 
 
 @app.route("/login", methods=["GET", "POST"])
