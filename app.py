@@ -449,7 +449,7 @@ def document_view(letter_id):
         history_cycles=history_cycles,
         activity=get_letter_activity(letter_id) if access == "moderator" else [],
         can_resubmit=(access == "owner" and letter["status"] in REVISABLE_LETTER_STATUSES),
-        today=date.today().isoformat(),
+        today=db.today_ph().isoformat(),
         has_signature=bool(user["signature_filename"]),
         signature_url=url_for("uploaded_file", filename=user["signature_filename"])
         if user["signature_filename"] else None,

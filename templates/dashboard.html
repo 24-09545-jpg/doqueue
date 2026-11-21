@@ -450,6 +450,7 @@
     const now = new Date();
 
     const dateStr = now.toLocaleDateString(undefined, {
+      timeZone: 'Asia/Manila',
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -457,6 +458,7 @@
     });
 
     const timeStr = now.toLocaleTimeString(undefined, {
+      timeZone: 'Asia/Manila',
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',

@@ -13,7 +13,7 @@ import os
 import re
 import sqlite3
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # On Vercel the project folder is read-only; /tmp is the only writable place (and it is temporary).
@@ -41,8 +41,22 @@ def _row_factory(cursor, row):
     return Row((col[0], row[idx]) for idx, col in enumerate(cursor.description))
 
 
+# All times are Philippine Standard Time (UTC+8, no daylight saving), whatever the
+# server's own clock is set to (Vercel servers run on UTC).
+PH_TZ = timezone(timedelta(hours=8), "PHT")
+
+
+def now_ph():
+    """Current Philippine date-time (naive, so it compares with stored values)."""
+    return datetime.now(PH_TZ).replace(tzinfo=None)
+
+
+def today_ph():
+    return now_ph().date()
+
+
 def now_str():
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    return now_ph().strftime("%Y-%m-%d %H:%M:%S")
 
 
 _local_conn = {}

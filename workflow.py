@@ -18,6 +18,7 @@ from datetime import date, datetime
 
 import filestore
 import pdfsign
+import db
 from db import AVAILABILITY_CHOICES, execute, now_str, query, transaction
 from models import (
     ACTIVE_STEP_STATUSES, IN_FLIGHT_LETTER_STATUSES, LETTER_STATUS_LABELS,
@@ -237,7 +238,7 @@ def submit_letter(user, title, note, expiry_raw, priority, file_storage, office_
     exp = _parse_date(expiry_raw)
     if not exp:
         raise WorkflowError("Please provide a valid expiry date.")
-    if exp < date.today():
+    if exp < db.today_ph():
         raise WorkflowError("Expiry date cannot be in the past.")
     _route_for(office_ids)  # validate the selection before saving the file
     priority = priority if priority in ("low", "medium", "high") else "low"
@@ -287,7 +288,7 @@ def resubmit_letter(user, letter_id, title, note, expiry_raw, file_storage, rema
         raise WorkflowError("Only returned, disapproved or expired letters can be resubmitted.")
     title = (title or "").strip() or letter["title"]
     exp = _parse_date(expiry_raw) if expiry_raw else _parse_date(letter["expiry_date"])
-    if not exp or exp < date.today():
+    if not exp or exp < db.today_ph():
         raise WorkflowError("Please provide a valid expiry date that is not in the past.")
 
     new_path = None
@@ -521,7 +522,7 @@ def _finalize(letter, version, sigs, ts, created):
     """Issue the next central tracking number and render the final PDF (inside the caller's transaction)."""
     execute("UPDATE counters SET value = value + 1 WHERE name = 'tracking'")
     seq = query("SELECT value FROM counters WHERE name = 'tracking'", one=True)["value"]
-    tracking = f"DSA-{datetime.now().year}-{seq:04d}"
+    tracking = f"DSA-{db.now_ph().year}-{seq:04d}"
     final_path = _path("final", f"final_l{letter['id']}_{uuid.uuid4().hex[:8]}.pdf")
     pdfsign.render_pdf(version["file_path"], sigs, final_path, tracking_number=tracking)
     created.append(final_path)
@@ -574,7 +575,7 @@ def return_or_disapprove(user, letter_id, decision, reason):
 
 def expire_overdue_letters():
     """Move in-flight letters past their expiry date to 'expired' (they can be revised & resubmitted)."""
-    today = date.today().isoformat()
+    today = db.today_ph().isoformat()
     overdue = query(
         f"""SELECT id FROM letters WHERE is_withdrawn = 0 AND expiry_date IS NOT NULL AND expiry_date < ?
               AND status IN ({','.join('?' * len(IN_FLIGHT_LETTER_STATUSES))})""",
